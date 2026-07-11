@@ -1,0 +1,855 @@
+/* ==========================
+   ORIZA ART 2.0
+   ========================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+body {
+    
+    margin: 0;
+    
+    font-family: 'Poppins', sans-serif;
+    
+    background:
+        radial-gradient(circle at top, #fdfaf7 0%, #f8f4ef 45%, #f2ebe3 100%);
+    
+    color: #333;
+    
+}
+
+.header-container{
+    position:sticky;
+    top:0;
+    z-index:2000;
+}
+
+.topbar{
+
+    height:40px;
+
+    background:#6F4E37;
+
+    color:#fff;
+
+    overflow:hidden;
+
+    display:flex;
+
+    align-items:center;
+
+}
+
+.topbar-track{
+
+    display:flex;
+
+    white-space:nowrap;
+
+    width:max-content;
+
+    animation:marquesina 22s linear infinite;
+
+}
+
+.topbar-track span{
+
+    padding-right:80px;
+
+    font-size:.90rem;
+
+    font-weight:500;
+
+}
+
+@keyframes marquesina{
+
+from{
+
+transform:translateX(0);
+
+}
+
+to{
+
+transform:translateX(-50%);
+
+}
+
+}
+
+/*=========================
+HEADER 3.0
+=========================*/
+
+.topbar{
+
+    width:100%;
+    height:40px;
+
+    background:#6F4E37;
+
+    color:white;
+
+    overflow:hidden;
+
+    display:flex;
+
+    align-items:center;
+
+}
+
+.topbar-track{
+
+    display:flex;
+
+    white-space:nowrap;
+
+    width:max-content;
+
+    animation:marquesina 22s linear infinite;
+
+}
+
+.topbar-track span{
+
+    padding-right:80px;
+
+}
+
+header{
+
+    position:sticky;
+
+    top:0;
+
+    z-index:1500;
+
+    background:rgba(248,243,237,.96);
+
+    backdrop-filter:blur(10px);
+
+    box-shadow:0 3px 12px rgba(0,0,0,.08);
+
+    transition:.3s;
+
+}
+.logo{
+    text-align:center;
+    width:100%;
+}
+
+.logo h1{
+    font-family:'Playfair Display',serif;
+    color:#6F4E37;
+    font-size:2rem;
+    margin:0 auto;
+}
+
+.logo p{
+    color:#888;
+    font-size:.9rem;
+    margin-top:5px;
+}
+
+nav{
+    margin-top:18px;
+
+    display:flex;
+
+    justify-content:center;
+
+    gap:18px;
+
+    flex-wrap:wrap;
+}
+
+nav a{
+
+text-decoration:none;
+
+color:#555;
+
+font-weight:500;
+
+transition:.3s;
+
+}
+
+nav a:hover{
+
+color:#6F4E37;
+
+}
+
+
+
+/* HERO */
+
+.hero{
+
+padding:40px 20px;
+
+display:flex;
+
+flex-direction:column;
+
+gap:30px;
+
+align-items:center;
+
+}
+
+.hero-img img{
+
+width:100%;
+
+max-width:430px;
+
+border-radius:25px;
+
+box-shadow:0 10px 30px rgba(0,0,0,.12);
+
+}
+
+.hero-text{
+
+text-align:center;
+
+}
+
+.etiqueta{
+
+display:inline-block;
+
+background:#E9DCCF;
+
+padding:8px 14px;
+
+border-radius:30px;
+
+font-size:.8rem;
+
+margin-bottom:15px;
+
+color:#6F4E37;
+
+font-weight:600;
+
+}
+
+.hero h2{
+
+font-family:'Playfair Display',serif;
+
+font-size:2.3rem;
+
+line-height:1.2;
+
+margin-bottom:20px;
+
+color:#3E3027;
+
+}
+
+.hero p{
+
+font-size:1rem;
+
+line-height:1.8;
+
+color:#666;
+
+}
+
+/* BOTONES */
+
+.botones{
+
+margin-top:30px;
+
+display:flex;
+
+justify-content:center;
+
+gap:15px;
+
+flex-wrap:wrap;
+
+}
+
+.btn{
+
+background:#6F4E37;
+
+color:white;
+
+padding:14px 28px;
+
+border-radius:40px;
+
+text-decoration:none;
+
+font-weight:600;
+
+transition:.3s;
+
+}
+
+.btn:hover{
+
+background:#8A6146;
+
+transform:translateY(-3px);
+
+}
+
+.btn2{
+
+background:#25D366;
+
+}
+
+.btn2:hover{
+
+background:#1FAE57;
+
+}
+
+/* COLECCIÓN */
+
+.coleccion{
+
+padding:70px 20px;
+
+}
+
+.coleccion h2{
+
+font-family:'Playfair Display',serif;
+
+font-size:2rem;
+
+text-align:center;
+
+margin-bottom:40px;
+
+color:#6F4E37;
+
+}
+
+.productos{
+
+display:flex;
+
+flex-direction:column;
+
+gap:30px;
+
+}
+
+.producto{
+
+background:white;
+
+border-radius:22px;
+
+overflow:hidden;
+
+box-shadow:0 8px 25px rgba(0,0,0,.08);
+
+transition:.3s;
+
+}
+
+.producto:hover{
+
+transform:translateY(-6px);
+
+}
+
+.producto img{
+
+width:100%;
+
+display:block;
+
+}
+
+.producto h3{
+
+padding:20px 20px 10px;
+
+font-size:1.4rem;
+
+}
+
+.producto p{
+
+padding:0 20px 20px;
+
+color:#666;
+
+}
+
+.producto button{
+
+margin:0 20px 20px;
+
+width:calc(100% - 40px);
+
+padding:14px;
+
+border:none;
+
+border-radius:40px;
+
+background:#6F4E37;
+
+color:white;
+
+font-size:1rem;
+
+cursor:pointer;
+
+}
+
+/* NOSOTROS */
+
+.nosotros{
+
+padding:70px 25px;
+
+text-align:center;
+
+}
+
+.nosotros h2{
+
+font-family:'Playfair Display',serif;
+
+font-size:2rem;
+
+margin-bottom:20px;
+
+color:#6F4E37;
+
+}
+
+.nosotros p{
+
+line-height:1.9;
+
+color:#666;
+
+max-width:700px;
+
+margin:auto;
+
+}
+
+/* FOOTER */
+
+footer{
+
+margin-top:60px;
+
+background:#6F4E37;
+
+color:white;
+
+padding:40px 20px;
+
+text-align:center;
+
+}
+
+footer h3{
+
+font-family:'Playfair Display',serif;
+
+margin-bottom:10px;
+
+}
+
+/* TABLET */
+
+@media(min-width:768px){
+
+.hero{
+
+flex-direction:row;
+
+justify-content:space-between;
+
+padding:70px;
+
+}
+
+.hero-text{
+
+text-align:left;
+
+flex:1;
+
+}
+
+.hero-img{
+
+flex:1;
+
+display:flex;
+
+justify-content:flex-end;
+
+}
+
+.productos{
+
+display:grid;
+
+grid-template-columns:repeat(2,1fr);
+
+gap:30px;
+
+}
+
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+button,
+.btn{
+    transition:all .3s ease;
+}
+
+button:active,
+.btn:active{
+    transform:scale(.97);
+}
+
+/*=========================
+  BOTÓN FLOTANTE WHATSAPP
+==========================*/
+
+#whatsapp-float{
+
+position:fixed;
+
+bottom:20px;
+
+right:20px;
+
+width:60px;
+
+height:60px;
+
+background:#25D366;
+
+color:white;
+
+font-size:30px;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+border-radius:50%;
+
+text-decoration:none;
+
+box-shadow:0 10px 20px rgba(0,0,0,.25);
+
+z-index:9999;
+
+transition:.3s;
+
+animation:flotar 2s infinite;
+
+}
+
+#whatsapp-float:hover{
+
+transform:scale(1.1);
+
+}
+
+@keyframes flotar{
+
+0%{transform:translateY(0);}
+
+50%{transform:translateY(-6px);}
+
+100%{transform:translateY(0);}
+
+}
+
+/*=========================
+  NUESTRA ESENCIA
+==========================*/
+
+.esencia{
+
+padding:70px 20px;
+
+background:#fff;
+
+text-align:center;
+
+}
+
+.esencia h2{
+
+font-family:'Playfair Display',serif;
+
+font-size:2rem;
+
+color:#6F4E37;
+
+margin-bottom:40px;
+
+}
+
+.esencia-grid{
+
+display:grid;
+
+gap:20px;
+
+}
+
+.esencia-card{
+
+background:#fff;
+
+    border-radius:22px;
+
+    overflow:hidden;
+
+    box-shadow:0 12px 30px rgba(0,0,0,.08);
+
+    transition:.35s;
+
+    border:1px solid rgba(111,78,55,.08);
+
+}
+
+.esencia-card:hover{
+
+transform:translateY(-8px);
+
+    box-shadow:0 18px 45px rgba(0,0,0,.12);
+
+}
+
+.icono{
+
+font-size:2.5rem;
+
+margin-bottom:15px;
+
+}
+
+.esencia-card h3{
+
+margin-bottom:10px;
+
+color:#6F4E37;
+
+}
+
+.esencia-card p{
+
+color:#666;
+
+line-height:1.6;
+
+}
+
+@media(min-width:768px){
+
+.esencia-grid{
+
+grid-template-columns:repeat(3,1fr);
+
+}
+
+}
+
+/*=========================
+  BOTÓN DE PRODUCTO
+==========================*/
+
+.btn-producto{
+display:inline-block;
+
+    background:#6F4E37;
+
+    color:#fff;
+
+    padding:14px 26px;
+
+    border-radius:40px;
+
+    text-decoration:none;
+
+    transition:.3s;
+
+    font-weight:600;
+}
+
+.btn-producto:hover{
+    background:#8A6146;
+
+    transform:translateY(-2px);
+}
+
+/*=========================
+ MODAL PRODUCTO
+==========================*/
+
+.modal{
+
+display:none;
+
+position:fixed;
+
+top:0;
+
+left:0;
+
+width:100%;
+
+height:100%;
+
+background:rgba(0,0,0,.6);
+
+z-index:3000;
+
+justify-content:center;
+
+align-items:center;
+
+padding:20px;
+
+}
+
+.modal-contenido{
+
+background:white;
+
+border-radius:20px;
+
+max-width:420px;
+
+width:100%;
+
+overflow:hidden;
+
+position:relative;
+
+animation:aparecer .3s;
+
+}
+
+.modal img{
+
+width:100%;
+
+display:block;
+
+}
+
+.modal h2{
+
+padding:20px 20px 10px;
+
+color:#6F4E37;
+
+}
+
+.modal p{
+
+padding:0 20px 20px;
+
+line-height:1.7;
+
+color:#666;
+}
+
+.modal .btn{
+
+margin:20px;
+
+display:block;
+
+text-align:center;
+
+}
+
+#cerrar-modal{
+
+position:absolute;
+
+right:18px;
+
+top:12px;
+
+font-size:34px;
+
+cursor:pointer;
+
+color:white;
+
+font-weight:bold;
+
+}
+
+@keyframes aparecer{
+
+from{
+
+opacity:0;
+
+transform:scale(.9);
+
+}
+
+to{
+
+opacity:1;
+
+transform:scale(1);
+
+}
+
+}
+
+.fade-up{
+
+    opacity:0;
+
+    transform:translateY(30px);
+
+    transition:.8s;
+
+}
+
+.fade-up.visible{
+
+    opacity:1;
+
+    transform:translateY(0);
+
+}
