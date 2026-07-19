@@ -19,9 +19,8 @@ if (btnWhatsapp) {
   });
 }
 
-// Animación de aparición al hacer scroll
-const elementos = document.querySelectorAll(".producto, .hero-text, .hero-img, .nosotros");
-
+// Animación de aparición al hacer scroll (reutilizable para elementos
+// que ya existen y para los que se insertan después, como el catálogo)
 const observador = new IntersectionObserver((entradas) => {
   
   entradas.forEach(entrada => {
@@ -39,15 +38,18 @@ const observador = new IntersectionObserver((entradas) => {
   threshold: 0.15
 });
 
-elementos.forEach(elemento => {
-  
+function animarEntrada(elemento) {
+
   elemento.style.opacity = "0";
   elemento.style.transform = "translateY(40px)";
   elemento.style.transition = "all .8s ease";
-  
+
   observador.observe(elemento);
-  
-});
+
+}
+
+document.querySelectorAll(".hero-text, .hero-img, .nosotros")
+  .forEach(animarEntrada);
 
 console.log("🌿 ORIZA ART 2.0 cargado correctamente");
 
@@ -75,49 +77,45 @@ window.open(
 }
 
 /*=========================
-  CATÁLOGO DINÁMICO
+  GALERÍA DINÁMICA (inicio)
+  Franja de solo imágenes, en orden aleatorio en cada carga,
+  para incentivar a entrar a catalogo.html y ver el detalle.
 ==========================*/
 
 const catalogo = document.getElementById("catalogo");
 
-if(catalogo){
+function mezclar(array) {
+  const copia = [...array];
+  for (let i = copia.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copia[i], copia[j]] = [copia[j], copia[i]];
+  }
+  return copia;
+}
 
-productos.forEach(producto=>{
+async function iniciarCatalogoInicio() {
 
-catalogo.innerHTML += `
+  if (!catalogo) return;
 
-<article class="producto">
+  const productos = await cargarProductos();
 
-<img src="${producto.imagen}" alt="${producto.nombre}">
+  const disponibles = productos.filter(producto => producto.disponible !== false);
+  let seleccion = mezclar(disponibles.length ? disponibles : productos);
 
-<h3>${producto.nombre}</h3>
+  // aseguramos suficientes imágenes para que la franja se vea llena y fluya bien
+  while (seleccion.length && seleccion.length < 6) {
+    seleccion = seleccion.concat(mezclar(seleccion));
+  }
 
-<p>${producto.descripcion}</p>
+  const tarjetas = seleccion.map(producto => `
+    <a href="producto.html?id=${producto.id}" class="galeria-item">
+      <img src="${producto.imagen}" alt="${producto.nombre}">
+    </a>
+  `).join("");
 
-<a href="producto.html?id=${producto.id}" class="btn-producto">
-    Ver detalles
-</a>
-
-</article>
-
-`;
-
-});
+  // se repite una vez para que el desplazamiento sea infinito y sin corte
+  catalogo.innerHTML = tarjetas + tarjetas;
 
 }
 
-cerrar.onclick=()=>{
-
-modal.style.display="none";
-
-};
-
-window.onclick=(e)=>{
-
-if(e.target===modal){
-
-modal.style.display="none";
-
-}
-
-};
+iniciarCatalogoInicio();

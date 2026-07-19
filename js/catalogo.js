@@ -4,6 +4,8 @@
 
 const contenedor = document.getElementById("lista-productos");
 
+let productos = [];
+
 function mostrarProductos(categoria = "todos", texto = ""){
 
     contenedor.innerHTML = "";
@@ -49,33 +51,19 @@ function mostrarProductos(categoria = "todos", texto = ""){
 
 }
 
-mostrarProductos();
+async function iniciarCatalogo() {
 
-document.querySelectorAll(".filtro").forEach(boton=>{
+    productos = await cargarProductos();
 
-    boton.addEventListener("click",()=>{
+    mostrarProductos();
 
-        document
-        .querySelector(".filtro.activo")
-        .classList.remove("activo");
+}
 
-        boton.classList.add("activo");
-
-        mostrarProductos(boton.dataset.categoria);
-
-    });
-
-});
+iniciarCatalogo();
 
 const buscador = document.getElementById("buscarProducto");
 
 let categoriaActual = "todos";
-
-buscador.addEventListener("input",()=>{
-
-    mostrarProductos(categoriaActual,buscador.value);
-
-});
 
 document.querySelectorAll(".filtro").forEach(boton=>{
 
@@ -89,8 +77,14 @@ document.querySelectorAll(".filtro").forEach(boton=>{
 
         boton.classList.add("activo");
 
-        mostrarProductos(categoriaActual,buscador.value);
+        mostrarProductos(categoriaActual, buscador.value);
 
     });
+
+});
+
+buscador.addEventListener("input",()=>{
+
+    mostrarProductos(categoriaActual,buscador.value);
 
 });
