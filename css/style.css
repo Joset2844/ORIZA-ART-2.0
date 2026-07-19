@@ -421,6 +421,129 @@ cursor:pointer;
 
 }
 
+/*=========================
+  ADELANTO DE COLECCIÓN (inicio)
+==========================*/
+
+.coleccion-intro{
+
+max-width:520px;
+
+margin:-25px auto 40px;
+
+text-align:center;
+
+color:#888;
+
+font-size:.95rem;
+
+line-height:1.6;
+
+}
+
+.ver-coleccion-completa{
+
+margin-top:40px;
+
+display:flex;
+
+justify-content:center;
+
+}
+
+/*=========================
+  GALERÍA DINÁMICA (inicio)
+  Franja de solo imágenes que se desliza sola.
+==========================*/
+
+.galeria-inicio{
+
+overflow:hidden;
+
+width:100%;
+
+-webkit-mask-image:linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+
+mask-image:linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+
+}
+
+.galeria-track{
+
+display:flex;
+
+gap:18px;
+
+width:max-content;
+
+animation:galeria-scroll 26s linear infinite;
+
+}
+
+.galeria-track:hover{
+
+animation-play-state:paused;
+
+}
+
+.galeria-item{
+
+flex:0 0 auto;
+
+width:190px;
+
+height:250px;
+
+border-radius:18px;
+
+overflow:hidden;
+
+box-shadow:0 8px 25px rgba(0,0,0,.1);
+
+display:block;
+
+}
+
+.galeria-item img{
+
+width:100%;
+
+height:100%;
+
+object-fit:cover;
+
+display:block;
+
+transition:.4s;
+
+}
+
+.galeria-item:hover img{
+
+transform:scale(1.08);
+
+}
+
+@keyframes galeria-scroll{
+
+from{transform:translateX(0);}
+
+to{transform:translateX(-50%);}
+
+}
+
+@media(min-width:768px){
+
+.galeria-item{
+
+width:240px;
+
+height:310px;
+
+}
+
+}
+
 /* NOSOTROS */
 
 .nosotros{
