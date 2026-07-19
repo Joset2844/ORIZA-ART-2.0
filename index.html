@@ -1,11 +1,175 @@
-const CONFIG = {
-  whatsapp: "51936235607",
-  instagram: "",
-  facebook: "",
+<!DOCTYPE html>
+<html lang="es">
+<head>
 
-  // Google Sheets: fuente de datos del catálogo (usada por js/api.js)
-  SHEETS: {
-    ID: "1ZfaGVT2e50SQZshf115OshfN4iWMt7d-_ayEM-HL4vw",
-    SHEET: "Productos"
-  }
-};
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ORIZA ART | Hecho a mano con amor</title>
+<meta name="description" content="Pulseras y collares artesanales tejidos a mano en Perú. Diseños personalizados, envíos a todo el país. Consulta por WhatsApp.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    
+    <div class="topbar">
+        <div class="topbar-track">
+
+            <span>
+                🚚 Envíos a todo el Perú • 💝 Diseños personalizados • ✨ Hecho a mano • 📿 Pulseras y collares artesanales • ❤️ Regalos únicos
+            </span>
+
+            <span>
+                🚚 Envíos a todo el Perú • 💝 Diseños personalizados • ✨ Hecho a mano • 📿 Pulseras y collares artesanales • ❤️ Regalos únicos
+            </span>
+
+        </div>
+    </div>
+    
+<header>
+
+<div class="logo">
+
+<h1>ORIZA ART</h1>
+
+<p>Hecho a mano con amor</p>
+
+</div>
+
+<nav>
+
+<a href="index.html">Inicio</a>
+
+<a href="catalogo.html">Colección</a>
+
+<a href="#nosotros">Nosotros</a>
+
+<a href="#contacto">Contacto</a>
+
+</nav>
+
+</header>
+
+
+<section class="hero">
+
+<div class="hero-text">
+
+<span class="etiqueta">ARTESANÍAS HECHAS A MANO</span>
+
+<h2>Cada pieza cuenta una historia.</h2>
+
+<p>
+
+Pulseras y collares tejidos artesanalmente con dedicación,
+amor y materiales cuidadosamente seleccionados.
+
+</p>
+
+<div class="botones">
+
+<a href="#catalogo" class="btn">Ver colección</a>
+
+
+<a href="#" class="btn btn2" id="whatsapp">
+WhatsApp
+</a>
+
+</div>
+
+</div>
+
+<div class="hero-img">
+
+<img src="img/hero.webp" alt="Pulseras artesanales">
+
+</div>
+
+</section>
+
+<section class="esencia">
+
+    <h2>Nuestra esencia</h2>
+
+    <div class="esencia-grid">
+
+        <div class="esencia-card">
+            <div class="icono">🤲</div>
+            <h3>Hecho a mano</h3>
+            <p>Cada pulsera y collar es elaborado cuidadosamente, pieza por pieza.</p>
+        </div>
+
+        <div class="esencia-card">
+            <div class="icono">🌿</div>
+            <h3>Materiales seleccionados</h3>
+            <p>Elegimos materiales que combinan belleza, resistencia y comodidad.</p>
+        </div>
+
+        <div class="esencia-card">
+            <div class="icono">🎁</div>
+            <h3>Personalización</h3>
+            <p>Diseñamos accesorios únicos para regalar o llevar contigo.</p>
+        </div>
+
+    </div>
+
+</section>
+
+<section id="coleccion" class="coleccion">
+
+<h2>Un vistazo a nuestra colección</h2>
+
+<p class="coleccion-intro">
+    Cada vez que entras te mostramos piezas distintas.
+    Descubre toda la colección para ver el resto.
+</p>
+
+<div class="galeria-inicio">
+    <div class="galeria-track" id="catalogo"></div>
+</div>
+
+<div class="ver-coleccion-completa">
+    <a href="catalogo.html" class="btn">Ver colección completa</a>
+</div>
+
+</section>
+
+<section id="nosotros" class="nosotros">
+
+<h2>¿Quiénes somos?</h2>
+
+<p>
+
+En ORIZA ART creemos que una artesanía no es solo un accesorio.
+Cada pulsera y cada collar son creados cuidadosamente para acompañar momentos especiales y convertirse en un recuerdo único.
+
+</p>
+
+</section>
+<footer id="contacto">
+
+<h3>ORIZA ART</h3>
+
+<p>Hecho a mano con amor.</p>
+
+<p>WhatsApp • Instagram • Facebook</p>
+
+</footer>
+
+<a href="#" id="whatsapp-float" aria-label="WhatsApp">
+    💬
+</a>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+
+</html>
