@@ -1,101 +1,52 @@
-<!DOCTYPE html>
-<html>
+async function cargarProductos() {
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEETS.ID}/gviz/tq?sheet=${CONFIG.SHEETS.SHEET}&tqx=out:json`;
 
-  <title>Catálogo | ORIZA ART</title>
+    const res = await fetch(url);
+    const txt = await res.text();
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    const json = JSON.parse(txt.substring(47).slice(0,-2));
 
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    return json.table.rows.map(r=>({
 
- <link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="css/catalogo.css">
-</head>
+        id: Number(r.c[0]?.v),
+        codigo: r.c[1]?.v || "",
 
-<body>
-<div class="topbar">
-        <div class="topbar-track">
+        categoria: r.c[2]?.v || "",
 
-            <span>
-                🚚 Envíos a todo el Perú • 💝 Diseños personalizados • ✨ Hecho a mano • 📿 Pulseras y collares artesanales • ❤️ Regalos únicos
-            </span>
+        nombre: r.c[3]?.v || "",
 
-            <span>
-                🚚 Envíos a todo el Perú • 💝 Diseños personalizados • ✨ Hecho a mano • 📿 Pulseras y collares artesanales • ❤️ Regalos únicos
-            </span>
+        precio: Number(r.c[4]?.v || 0),
 
-        </div>
-    </div>
-    
-<header>
+        materiales: (r.c[5]?.v || "")
+            .split(",")
+            .map(x=>x.trim())
+            .filter(Boolean),
 
-<div class="logo">
+        descripcion: r.c[6]?.v || "",
 
-<h1>ORIZA ART</h1>
+        imagen: `img/${r.c[1]?.v}.webp`,
 
-<p>Hecho a mano con amor</p>
+        galeria: [
+    r.c[7]?.v || "img/hero.jpg"
+],
 
-</div>
+        disponible:
+            (r.c[8]?.v || "")
+            .toString()
+            .toLowerCase()=="activo",
 
-<nav>
+        destacado:
+            (r.c[9]?.v || "")
+            .toString()
+            .toLowerCase()=="si",
 
-<a href="index.html">Inicio</a>
+        stock:999,
 
-<a href="catalogo.html">Colección</a>
+        nuevo:false,
 
-<a href="index.html#nosotros">Nosotros</a>
+        personalizable:true,
 
-<a href="index.html#contacto">Contacto</a>
-
-</nav>
-
-</header>
-
-<section class="catalogo-hero">
-
-    <span class="etiqueta">
-        COLECCIÓN ORIZA ART
-    </span>
-
-    <h2>Nuestra colección artesanal</h2>
-    
-    <div class="buscador">
-    <input
-        type="text"
-        id="buscarProducto"
-        placeholder="🔍 Buscar pulseras, collares..."
-    >
-</div>
-    
-   <div class="filtros">
-
-    <button class="filtro activo" data-categoria="todos">Todos</button>
-
-    <button class="filtro" data-categoria="pulsera">Pulseras</button>
-
-    <button class="filtro" data-categoria="collar">Collares</button>
-
-</div>
-    <p>
-        Descubre pulseras y collares hechos completamente a mano.
-    </p>
-
-</section>
-
-<section class="catalogo-productos">
-
-    <div id="lista-productos"></div>
-
-</section>
-
-<script src="js/config.js"></script>
-<script src="js/productos.js"></script>
-<script src="js/catalogo.js"></script>
-
-</body>
-
-</html>
+        colores:[]
+    }));
+}

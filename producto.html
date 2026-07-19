@@ -2,17 +2,19 @@
 <html>
 
 <head>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title></title>
-  
-  <link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="css/producto.css">
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Catálogo | ORIZA ART</title>
+  <meta name="description" content="Explora la colección completa de pulseras y collares artesanales de ORIZA ART. Filtra por categoría y encuentra tu diseño ideal.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+
+ <link rel="stylesheet" href="css/style.css">
+ <link rel="stylesheet" href="css/catalogo.css">
 </head>
 
 <body>
@@ -54,35 +56,46 @@
 
 </header>
 
-<main class="producto">
+<section class="catalogo-hero">
 
-    <div class="producto-imagen">
-        <img id="imgProducto" src="" alt="">
-    </div>
+    <span class="etiqueta">
+        COLECCIÓN ORIZA ART
+    </span>
 
-    <div class="producto-info">
+    <h2>Nuestra colección artesanal</h2>
+    
+    <div class="buscador">
+    <input
+        type="text"
+        id="buscarProducto"
+        placeholder="🔍 Buscar pulseras, collares..."
+    >
+</div>
+    
+   <div class="filtros">
 
-        <span id="categoriaProducto" class="categoria"></span>
+    <button class="filtro activo" data-categoria="todos">Todos</button>
 
-        <h1 id="nombreProducto"></h1>
+    <button class="filtro" data-categoria="pulsera">Pulseras</button>
 
-        <p id="descripcionProducto"></p>
+    <button class="filtro" data-categoria="collar">Collares</button>
 
-        <a id="btnWhatsapp" class="btn-producto" href="#">
-            Consultar por WhatsApp
-        </a>
+</div>
+    <p>
+        Descubre pulseras y collares hechos completamente a mano.
+    </p>
 
-        <a class="btn-volver" href="catalogo.html">
-            ← Volver al catálogo
-        </a>
+</section>
 
-    </div>
+<section class="catalogo-productos">
 
-</main>
+    <div id="lista-productos"></div>
+
+</section>
 
 <script src="js/config.js"></script>
-<script src="js/productos.js"></script>
-<script src="js/producto.js"></script>
+<script src="js/api.js"></script>
+<script src="js/catalogo.js"></script>
 
 </body>
 
