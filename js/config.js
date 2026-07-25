@@ -1,7 +1,7 @@
 const CONFIG = {
   whatsapp: "51936235607",
-  instagram: "",
-  facebook: "",
+  instagram: "https://www.instagram.com/oriza_art/",
+  facebook: "https://www.facebook.com/oriza.art/",
 
   // Google Sheets: fuente de datos del catálogo (usada por js/api.js)
   SHEETS: {

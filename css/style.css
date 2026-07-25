@@ -976,3 +976,59 @@ transform:scale(1);
     transform:translateY(0);
 
 }
+
+.social-buttons{
+    display:flex;
+    justify-content:center;
+    gap:15px;
+    margin-top:20px;
+    flex-wrap:wrap;
+}
+
+.social-buttons a{
+    padding:10px 18px;
+    border-radius:50px;
+    text-decoration:none;
+    background:#fff;
+    color:#333;
+    font-weight:600;
+    transition:.3s;
+}
+
+.social-buttons a:hover{
+    transform:translateY(-3px);
+    box-shadow:0 8px 20px rgba(0,0,0,.15);
+}
+
+#carrito-float{
+
+position:fixed;
+
+bottom:90px;
+
+right:20px;
+
+background:#7b5537;
+
+color:white;
+
+padding:14px 18px;
+
+border-radius:50px;
+
+cursor:pointer;
+
+font-weight:600;
+
+box-shadow:0 10px 30px rgba(0,0,0,.25);
+
+z-index:9999;
+
+transition:.25s;
+}
+
+#carrito-float:hover{
+
+transform:translateY(-3px);
+
+}
