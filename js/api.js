@@ -10,9 +10,9 @@ const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEETS.ID}/gviz/tq?
     return json.table.rows
         .filter(r => r.c[8]?.v?.toString().toLowerCase() === "activo")
         .sort((a, b) => (Number(a.c[10]?.v || 999) - Number(b.c[10]?.v || 999)))
-        .map(r=>({
+        .map((r, idx) => ({
 
-        id: Number(r.c[1]?.v) || Math.random(),
+        id: idx + 1,
         
         codigo: r.c[1]?.v || "",
 

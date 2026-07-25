@@ -8,54 +8,72 @@ async function obtenerProductos() {
 
 async function iniciarProducto() {
 
-    const productos = await obtenerProductos();
-    const parametros = new URLSearchParams(window.location.search);
-    const id = Number(parametros.get("id"));
+    try {
+        const productos = await obtenerProductos();
+        const parametros = new URLSearchParams(window.location.search);
+        const id = Number(parametros.get("id"));
 
-    const producto = productos.find(p => p.id === id);
+        console.log("🔍 Buscando producto con ID:", id);
+        console.log("📦 Productos disponibles:", productos.map(p => ({ id: p.id, nombre: p.nombre })));
 
-    if (!producto) {
-        document.title = "Producto no encontrado | ORIZA ART";
+        const producto = productos.find(p => p.id === id);
+
+        if (!producto) {
+            console.warn("❌ Producto no encontrado");
+            document.title = "Producto no encontrado | ORIZA ART";
+            document.body.innerHTML = `
+                <div style="text-align:center; padding:60px 20px;">
+                    <h1>Producto no disponible</h1>
+                    <p>El producto que buscas no existe o fue removido.</p>
+                    <a href="catalogo.html" class="btn">Volver al catálogo</a>
+                </div>
+            `;
+            return;
+        }
+
+        console.log("✅ Producto encontrado:", producto.nombre);
+
+        document.title = `${producto.nombre} | ORIZA ART`;
+        
+        const img = document.getElementById("imgProducto");
+        if (img) {
+            img.src = producto.imagen;
+            img.alt = producto.nombre;
+        }
+
+        const nombre = document.getElementById("nombreProducto");
+        if (nombre) nombre.textContent = producto.nombre;
+
+        const precio = document.getElementById("precioProducto");
+        if (precio) precio.textContent = `S/ ${producto.precio.toFixed(2)}`;
+
+        const desc = document.getElementById("descripcionProducto");
+        if (desc) desc.textContent = producto.descripcion;
+        
+        const mat = document.getElementById("materialesProducto");
+        if (mat) mat.innerHTML = `<strong>Materiales:</strong> ${producto.materiales.join(", ")}`;
+
+        const cat = document.getElementById("categoriaProducto");
+        if (cat) cat.textContent = producto.categoria;
+
+        const btn = document.getElementById("btnWhatsapp");
+        if (btn) {
+            btn.href = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(
+                `Hola 👋, me interesa ${producto.nombre}.`
+            )}`;
+        }
+
+    } catch (error) {
+        console.error("❌ Error al cargar producto:", error);
         document.body.innerHTML = `
             <div style="text-align:center; padding:60px 20px;">
-                <h1>Producto no disponible</h1>
-                <p>El producto que buscas no existe o fue removido.</p>
+                <h1>Error al cargar</h1>
+                <p>Hubo un problema cargando el producto.</p>
                 <a href="catalogo.html" class="btn">Volver al catálogo</a>
             </div>
         `;
-        return;
-    }
-
-    document.title = `${producto.nombre} | ORIZA ART`;
-    
-    const img = document.getElementById("imgProducto");
-    if (img) {
-        img.src = producto.imagen;
-        img.alt = producto.nombre;
-    }
-
-    const nombre = document.getElementById("nombreProducto");
-    if (nombre) nombre.textContent = producto.nombre;
-
-    const precio = document.getElementById("precioProducto");
-    if (precio) precio.textContent = `S/ ${producto.precio.toFixed(2)}`;
-
-    const desc = document.getElementById("descripcionProducto");
-    if (desc) desc.textContent = producto.descripcion;
-    
-    const mat = document.getElementById("materialesProducto");
-    if (mat) mat.innerHTML = `<strong>Materiales:</strong> ${producto.materiales.join(", ")}`;
-
-    const cat = document.getElementById("categoriaProducto");
-    if (cat) cat.textContent = producto.categoria;
-
-    const btn = document.getElementById("btnWhatsapp");
-    if (btn) {
-        btn.href = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(
-            `Hola 👋, me interesa ${producto.nombre}.`
-        )}`;
     }
 
 }
 
-iniciarProducto();
+document.addEventListener("DOMContentLoaded", iniciarProducto);
