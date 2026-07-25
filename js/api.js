@@ -10,32 +10,44 @@ const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEETS.ID}/gviz/tq?
     return json.table.rows
         .filter(r => r.c[8]?.v?.toString().toLowerCase() === "activo")
         .sort((a, b) => (Number(a.c[10]?.v || 999) - Number(b.c[10]?.v || 999)))
-        .map((r, idx) => ({
+        .map((r, idx) => {
 
-        id: idx + 1,
-        
-        codigo: r.c[1]?.v || "",
+            const stockRaw = r.c[11]?.v;
+            const stock = (stockRaw === undefined || stockRaw === "") ? 999 : Number(stockRaw);
 
-        categoria: r.c[2]?.v || "",
+            return {
 
-        nombre: r.c[3]?.v || "",
+                id: idx + 1,
 
-        precio: Number(r.c[4]?.v || 0),
+                codigo: r.c[1]?.v || "",
 
-        materiales: (r.c[5]?.v || "")
-            .split(",")
-            .map(x=>x.trim())
-            .filter(Boolean),
+                categoria: r.c[2]?.v || "",
 
-        descripcion: r.c[6]?.v || "",
+                nombre: r.c[3]?.v || "",
 
-        imagen: `img/${r.c[1]?.v}.webp`,
+                precio: Number(r.c[4]?.v || 0),
 
-        destacado:
-            (r.c[9]?.v || "")
-            .toString()
-            .toLowerCase()==="si",
+                materiales: (r.c[5]?.v || "")
+                    .split(",")
+                    .map(x=>x.trim())
+                    .filter(Boolean),
 
-        orden: Number(r.c[10]?.v || 999)
-    }));
+                descripcion: r.c[6]?.v || "",
+
+                imagen: `img/${r.c[1]?.v}.webp`,
+
+                destacado:
+                    (r.c[9]?.v || "")
+                    .toString()
+                    .toLowerCase()==="si",
+
+                orden: Number(r.c[10]?.v || 999),
+
+                stock: stock,
+
+                agotado: stock <= 0
+
+            };
+
+        });
 }

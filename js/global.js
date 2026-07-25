@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
         flotante.addEventListener("click", (e) => {
             e.preventDefault();
             const mensaje = encodeURIComponent(
-                "Hola 👋, quiero información sobre las artesanías de ORIZA ART."
+                "Hola, quiero información sobre las artesanías de ORIZA ART."
             );
             window.open(`https://wa.me/${CONFIG.whatsapp}?text=${mensaje}`, "_blank");
         });

@@ -12,7 +12,7 @@ if (btnWhatsapp) {
     e.preventDefault();
     
     const mensaje = encodeURIComponent(
-      "¡Hola! 👋 Me gustaría recibir información sobre las artesanías de ORIZA ART."
+      "¡Hola! Me gustaría recibir información sobre las artesanías de ORIZA ART."
     );
     
     window.open(`https://wa.me/${CONFIG.whatsapp}?text=${mensaje}`);
@@ -76,7 +76,7 @@ async function iniciarCatalogoInicio() {
 
   const productos = await cargarProductos();
 
-  const disponibles = productos.filter(producto => producto.disponible !== false);
+  const disponibles = productos.filter(producto => !producto.agotado);
   let seleccion = mezclar(disponibles.length ? disponibles : productos);
 
   // aseguramos suficientes imágenes para que la franja se vea llena y fluya bien

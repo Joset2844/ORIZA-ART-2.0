@@ -107,6 +107,26 @@
     color:#fff;
 }
 
+.btn-producto:disabled,
+.btn-producto.agotado{
+    background:#ccc;
+    color:#888;
+    cursor:not-allowed;
+    border-color:#ccc;
+}
+
+.btn-producto:disabled:hover{
+    transform:none;
+    background:#ccc;
+}
+
+.aviso-stock{
+    color:#E63946;
+    font-weight:600;
+    font-size:.9rem;
+    margin-top:-4px;
+}
+
 @media(min-width:480px){
     .producto-acciones{
         flex-direction:row;

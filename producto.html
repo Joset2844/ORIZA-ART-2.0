@@ -132,20 +132,41 @@
         <button id="carrito-cerrar" aria-label="Cerrar carrito">✕</button>
     </div>
 
-    <div id="carrito-lista" class="carrito-lista"></div>
+    <div id="carrito-vista-lista" class="carrito-vista">
+        <div id="carrito-lista" class="carrito-lista"></div>
+    </div>
 
-    <div class="carrito-panel-footer">
+    <div id="carrito-vista-checkout" class="carrito-vista" hidden>
+        <div id="carrito-checkout"></div>
+    </div>
+
+    <div class="carrito-panel-footer" id="footer-lista">
         <div class="carrito-total-row">
             <span>Total</span>
             <strong id="carrito-total">S/ 0.00</strong>
         </div>
 
-        <a id="carrito-enviar" href="#" target="_blank" rel="noopener">
-            Enviar pedido por WhatsApp
-        </a>
+        <button id="carrito-continuar" class="btn-carrito-primario">
+            Continuar con mi pedido →
+        </button>
 
         <button id="carrito-vaciar" class="carrito-vaciar-btn">
             Vaciar carrito
+        </button>
+    </div>
+
+    <div class="carrito-panel-footer" id="footer-checkout" hidden>
+        <div class="carrito-total-row">
+            <span>Total</span>
+            <strong id="carrito-total-2">S/ 0.00</strong>
+        </div>
+
+        <button id="carrito-enviar" class="btn-carrito-primario">
+            Confirmar y enviar por WhatsApp
+        </button>
+
+        <button id="carrito-volver" class="carrito-vaciar-btn">
+            ← Volver al carrito
         </button>
     </div>
 

@@ -59,15 +59,27 @@ async function iniciarProducto() {
         const btn = document.getElementById("btnWhatsapp");
         if (btn) {
             btn.href = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(
-                `Hola 👋, me interesa ${producto.nombre}.`
+                `Hola, me interesa ${producto.nombre}.`
             )}`;
         }
 
         const btnCarrito = document.getElementById("btnAgregarCarrito");
         if (btnCarrito) {
-            btnCarrito.addEventListener("click", () => {
-                agregarProducto(producto);
-            });
+            if (producto.agotado) {
+                btnCarrito.disabled = true;
+                btnCarrito.textContent = "Agotado";
+                btnCarrito.classList.add("agotado");
+            } else {
+                btnCarrito.addEventListener("click", () => {
+                    agregarProducto(producto);
+                });
+                if (producto.stock <= 3) {
+                    const aviso = document.createElement("p");
+                    aviso.className = "aviso-stock";
+                    aviso.textContent = `¡Solo quedan ${producto.stock} unidades!`;
+                    btnCarrito.insertAdjacentElement("afterend", aviso);
+                }
+            }
         }
 
     } catch (error) {

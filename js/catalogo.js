@@ -21,9 +21,14 @@ function mostrarProductos(categoria = "todos", texto = ""){
 
     filtrados.forEach(producto=>{
         const article = document.createElement("article");
-        article.className = "card-producto";
+        article.className = "card-producto" + (producto.agotado ? " agotado" : "");
         article.innerHTML = `
-            <img src="${producto.imagen}" alt="${producto.nombre}" loading="lazy">
+            <div class="card-imagen-wrap">
+                <img src="${producto.imagen}" alt="${producto.nombre}" loading="lazy">
+                ${producto.agotado
+                    ? '<span class="badge-agotado">Agotado</span>'
+                    : (producto.stock <= 3 ? `<span class="badge-stock">¡Últimas ${producto.stock}!</span>` : "")}
+            </div>
             <div class="card-info">
                 <span class="categoria">${producto.categoria}</span>
                 <h3>${producto.nombre}</h3>
@@ -39,6 +44,9 @@ function mostrarProductos(categoria = "todos", texto = ""){
                         data-nombre="${producto.nombre}"
                         data-precio="${producto.precio}"
                         data-imagen="${producto.imagen}"
+                        data-stock="${producto.stock}"
+                        data-agotado="${producto.agotado}"
+                        ${producto.agotado ? "disabled" : ""}
                     >
                         🛒
                     </button>
