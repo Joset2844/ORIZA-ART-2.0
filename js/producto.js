@@ -63,6 +63,13 @@ async function iniciarProducto() {
             )}`;
         }
 
+        const btnCarrito = document.getElementById("btnAgregarCarrito");
+        if (btnCarrito) {
+            btnCarrito.addEventListener("click", () => {
+                agregarProducto(producto);
+            });
+        }
+
     } catch (error) {
         console.error("❌ Error al cargar producto:", error);
         document.body.innerHTML = `

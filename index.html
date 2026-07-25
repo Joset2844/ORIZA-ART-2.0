@@ -164,11 +164,11 @@ Cada pulsera y cada collar son creados cuidadosamente para acompañar momentos e
         💬 WhatsApp
     </a>
 
-    <a href="https://www.instagram.com/oriza_art/" target="_blank">
+    <a href="https://www.instagram.com/oriza_art/" target="_blank" rel="noopener">
         📷 Instagram
     </a>
 
-    <a href="https://www.facebook.com/TU_PAGINA" target="_blank">
+    <a href="https://www.facebook.com/oriza.art/" target="_blank" rel="noopener">
         👍 Facebook
     </a>
 
@@ -180,17 +180,44 @@ Cada pulsera y cada collar son creados cuidadosamente para acompañar momentos e
     💬
 </a>
 
+<button id="carrito-float" aria-label="Ver carrito de compras">
+    🛒
+    <span id="carrito-contador">0</span>
+</button>
+
+<div id="carrito-overlay"></div>
+
+<aside id="carrito-panel" aria-hidden="true">
+
+    <div class="carrito-panel-header">
+        <h3>🛒 Tu pedido</h3>
+        <button id="carrito-cerrar" aria-label="Cerrar carrito">✕</button>
+    </div>
+
+    <div id="carrito-lista" class="carrito-lista"></div>
+
+    <div class="carrito-panel-footer">
+        <div class="carrito-total-row">
+            <span>Total</span>
+            <strong id="carrito-total">S/ 0.00</strong>
+        </div>
+
+        <a id="carrito-enviar" href="#" target="_blank" rel="noopener">
+            Enviar pedido por WhatsApp
+        </a>
+
+        <button id="carrito-vaciar" class="carrito-vaciar-btn">
+            Vaciar carrito
+        </button>
+    </div>
+
+</aside>
+
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
-<script src="js/main.js"></script>
-
-<div id="carrito-float">
-
-    🛒 <span id="carrito-contador">0</span>
-
-</div>
-
+<script src="js/global.js"></script>
 <script src="js/carrito.js"></script>
+<script src="js/main.js"></script>
 </body>
 
 </html>

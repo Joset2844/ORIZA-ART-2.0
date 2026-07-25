@@ -28,9 +28,21 @@ function mostrarProductos(categoria = "todos", texto = ""){
                 <span class="categoria">${producto.categoria}</span>
                 <h3>${producto.nombre}</h3>
                 <p>${producto.descripcion}</p>
-                <a href="producto.html?id=${producto.id}" class="btn-producto">
-                    Ver detalles
-                </a>
+                <span class="card-precio">S/ ${producto.precio.toFixed(2)}</span>
+                <div class="card-acciones">
+                    <a href="producto.html?id=${producto.id}" class="btn-producto">
+                        Ver detalles
+                    </a>
+                    <button
+                        class="btn-agregar-carrito"
+                        data-id="${producto.id}"
+                        data-nombre="${producto.nombre}"
+                        data-precio="${producto.precio}"
+                        data-imagen="${producto.imagen}"
+                    >
+                        🛒
+                    </button>
+                </div>
             </div>
         `;
         fragment.appendChild(article);

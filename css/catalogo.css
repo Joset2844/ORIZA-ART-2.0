@@ -129,7 +129,65 @@ color:#666;
 
 line-height:1.6;
 
-margin-bottom:20px;
+margin-bottom:16px;
+
+}
+
+.card-precio{
+
+display:block;
+
+font-size:1.2rem;
+
+font-weight:700;
+
+color:#8B5E3C;
+
+margin-bottom:16px;
+
+}
+
+.card-acciones{
+
+display:flex;
+
+gap:10px;
+
+}
+
+.card-acciones .btn-producto{
+
+flex:1;
+
+}
+
+.btn-agregar-carrito{
+
+flex-shrink:0;
+
+width:48px;
+
+border:none;
+
+border-radius:30px;
+
+background:#F4E7D8;
+
+color:#6F4E37;
+
+font-size:1.2rem;
+
+cursor:pointer;
+
+transition:.3s;
+
+}
+
+.btn-agregar-carrito:hover{
+
+background:#6F4E37;
+
+color:#fff;
 
 }
 

@@ -53,29 +53,6 @@ document.querySelectorAll(".hero-text, .hero-img, .nosotros")
 
 console.log("🌿 ORIZA ART 2.0 cargado correctamente");
 
-// Botón flotante
-
-const flotante = document.getElementById("whatsapp-float");
-
-if(flotante){
-
-flotante.addEventListener("click",(e)=>{
-
-e.preventDefault();
-
-const mensaje=encodeURIComponent(
-"Hola 👋, quiero información sobre las artesanías de ORIZA ART."
-);
-
-window.open(
-`https://wa.me/${CONFIG.whatsapp}?text=${mensaje}`,
-"_blank"
-);
-
-});
-
-}
-
 /*=========================
   GALERÍA DINÁMICA (inicio)
   Franja de solo imágenes, en orden aleatorio en cada carga,

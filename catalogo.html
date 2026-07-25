@@ -93,8 +93,71 @@
 
 </section>
 
+<footer id="contacto">
+
+    <h3>ORIZA ART</h3>
+
+    <p>Hecho a mano con amor.</p>
+
+    <div class="social-buttons">
+
+        <a href="https://wa.me/51936235607" target="_blank" rel="noopener">
+            💬 WhatsApp
+        </a>
+
+        <a href="https://www.instagram.com/oriza_art/" target="_blank" rel="noopener">
+            📷 Instagram
+        </a>
+
+        <a href="https://www.facebook.com/oriza.art/" target="_blank" rel="noopener">
+            👍 Facebook
+        </a>
+
+    </div>
+
+</footer>
+
+<a href="#" id="whatsapp-float" aria-label="WhatsApp">
+    💬
+</a>
+
+<button id="carrito-float" aria-label="Ver carrito de compras">
+    🛒
+    <span id="carrito-contador">0</span>
+</button>
+
+<div id="carrito-overlay"></div>
+
+<aside id="carrito-panel" aria-hidden="true">
+
+    <div class="carrito-panel-header">
+        <h3>🛒 Tu pedido</h3>
+        <button id="carrito-cerrar" aria-label="Cerrar carrito">✕</button>
+    </div>
+
+    <div id="carrito-lista" class="carrito-lista"></div>
+
+    <div class="carrito-panel-footer">
+        <div class="carrito-total-row">
+            <span>Total</span>
+            <strong id="carrito-total">S/ 0.00</strong>
+        </div>
+
+        <a id="carrito-enviar" href="#" target="_blank" rel="noopener">
+            Enviar pedido por WhatsApp
+        </a>
+
+        <button id="carrito-vaciar" class="carrito-vaciar-btn">
+            Vaciar carrito
+        </button>
+    </div>
+
+</aside>
+
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
+<script src="js/global.js"></script>
+<script src="js/carrito.js"></script>
 <script src="js/catalogo.js"></script>
 
 </body>
