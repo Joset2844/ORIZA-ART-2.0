@@ -634,16 +634,6 @@ justify-content:flex-end;
 
 }
 
-.productos{
-
-display:grid;
-
-grid-template-columns:repeat(2,1fr);
-
-gap:30px;
-
-}
-
 }
 
 html{
@@ -1031,4 +1021,13 @@ transition:.25s;
 
 transform:translateY(-3px);
 
+}
+
+/* Responsive */
+@media(min-width:768px){
+    .productos{
+        display:grid;
+        grid-template-columns:repeat(2,1fr);
+        gap:30px;
+    }
 }

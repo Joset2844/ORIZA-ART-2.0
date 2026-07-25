@@ -7,9 +7,13 @@ const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEETS.ID}/gviz/tq?
 
     const json = JSON.parse(txt.substring(47).slice(0,-2));
 
-    return json.table.rows.map(r=>({
+    return json.table.rows
+        .filter(r => r.c[8]?.v?.toString().toLowerCase() === "activo")
+        .sort((a, b) => (Number(a.c[10]?.v || 999) - Number(b.c[10]?.v || 999)))
+        .map(r=>({
 
-        id: Number(r.c[0]?.v),
+        id: Number(r.c[1]?.v) || Math.random(),
+        
         codigo: r.c[1]?.v || "",
 
         categoria: r.c[2]?.v || "",
@@ -27,26 +31,11 @@ const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEETS.ID}/gviz/tq?
 
         imagen: `img/${r.c[1]?.v}.webp`,
 
-        galeria: [
-    r.c[7]?.v || "img/hero.jpg"
-],
-
-        disponible:
-            (r.c[8]?.v || "")
-            .toString()
-            .toLowerCase()=="activo",
-
         destacado:
             (r.c[9]?.v || "")
             .toString()
-            .toLowerCase()=="si",
+            .toLowerCase()==="si",
 
-        stock:999,
-
-        nuevo:false,
-
-        personalizable:true,
-
-        colores:[]
+        orden: Number(r.c[10]?.v || 999)
     }));
 }

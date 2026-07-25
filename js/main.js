@@ -109,7 +109,7 @@ async function iniciarCatalogoInicio() {
 
   const tarjetas = seleccion.map(producto => `
     <a href="producto.html?id=${producto.id}" class="galeria-item">
-      <img src="${producto.imagen}" alt="${producto.nombre}">
+      <img src="${producto.imagen}" alt="${producto.nombre}" loading="lazy">
     </a>
   `).join("");
 
