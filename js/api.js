@@ -34,7 +34,10 @@ const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEETS.ID}/gviz/tq?
 
                 descripcion: r.c[6]?.v || "",
 
-                imagen: `img/${r.c[1]?.v}.webp`,
+                imagen: (() => {
+                    const valor = (r.c[7]?.v || "").toString().trim();
+                    return valor.startsWith("http") ? valor : `img/${r.c[1]?.v}.webp`;
+                })(),
 
                 destacado:
                     (r.c[9]?.v || "")

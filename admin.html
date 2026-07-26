@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin | ORIZA ART</title>
+<link rel="stylesheet" href="css/admin.css">
+
+</head>
+<body>
+
+<div id="login-vista" class="login-vista">
+    <form id="login-form" class="login-form">
+        <h1>ORIZA ART</h1>
+        <p>Panel de administración</p>
+        <input type="password" id="login-password" placeholder="Contraseña" required autofocus>
+        <button type="submit">Entrar</button>
+        <p id="login-error" class="login-error" hidden></p>
+    </form>
+</div>
+
+<div id="panel-vista" hidden>
+
+    <header class="admin-header">
+        <h1>ORIZA ART · Admin</h1>
+        <div class="admin-header-acciones">
+            <button id="btn-nuevo" class="btn-primario">+ Nuevo producto</button>
+            <button id="btn-cerrar-sesion" class="btn-secundario">Cerrar sesión</button>
+        </div>
+    </header>
+
+    <main class="admin-main">
+        <div class="tabla-wrap">
+            <table class="tabla-admin">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-productos"></tbody>
+            </table>
+        </div>
+    </main>
+
+</div>
+
+<div id="form-overlay" class="form-overlay" hidden>
+    <form id="form-producto" class="form-producto">
+
+        <div class="form-header">
+            <h2 id="form-titulo">Nuevo producto</h2>
+            <button type="button" id="form-cerrar" aria-label="Cerrar">✕</button>
+        </div>
+
+        <label>
+            <span>ID (único, ej. ES-PU-003)</span>
+            <input type="text" id="f-id" required>
+        </label>
+
+        <label>
+            <span>Tipo</span>
+            <select id="f-tipo">
+                <option value="PULSERA">Pulsera</option>
+                <option value="COLLAR">Collar</option>
+            </select>
+        </label>
+
+        <label>
+            <span>Nombre</span>
+            <input type="text" id="f-nombre" required>
+        </label>
+
+        <label>
+            <span>Precio (S/)</span>
+            <input type="number" id="f-precio" step="0.10" min="0" required>
+        </label>
+
+        <label>
+            <span>Material</span>
+            <input type="text" id="f-material" placeholder="Separado por comas">
+        </label>
+
+        <label>
+            <span>Descripción</span>
+            <textarea id="f-descripcion" rows="3"></textarea>
+        </label>
+
+        <label>
+            <span>Imagen (URL, opcional)</span>
+            <input type="text" id="f-imagen" placeholder="https://...">
+            <small>Sube tu foto a imgbb.com o Drive y pega el link. Vacío = usa la imagen ya existente según el ID.</small>
+        </label>
+
+        <label>
+            <span>Estado</span>
+            <select id="f-estado">
+                <option value="ACTIVO">Activo</option>
+                <option value="INACTIVO">Inactivo</option>
+            </select>
+        </label>
+
+        <label>
+            <span>Destacado</span>
+            <select id="f-destacado">
+                <option value="NO">No</option>
+                <option value="SI">Sí</option>
+            </select>
+        </label>
+
+        <label>
+            <span>Orden</span>
+            <input type="number" id="f-orden" min="1">
+        </label>
+
+        <label>
+            <span>Stock</span>
+            <input type="number" id="f-stock" min="0" required>
+        </label>
+
+        <button type="submit" class="btn-primario">Guardar</button>
+
+    </form>
+</div>
+
+<script src="js/admin.js"></script>
+</body>
+</html>
