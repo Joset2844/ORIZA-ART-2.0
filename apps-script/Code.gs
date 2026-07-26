@@ -10,34 +10,33 @@ const CLAVE_ADMIN = "CAMBIA_ESTA_CLAVE";
 function doGet(e) {
   const accion = e.parameter.action;
 
-  if (accion === "listar") {
-    if (e.parameter.password !== CLAVE_ADMIN) {
-      return respuesta({ error: "Clave incorrecta" });
-    }
-    return respuesta({ productos: listarProductos() });
-  }
-
-  return respuesta({ error: "Acción no reconocida" });
-}
-
-function doPost(e) {
-  let body;
-  try {
-    body = JSON.parse(e.postData.contents);
-  } catch (err) {
-    return respuesta({ error: "Datos inválidos" });
-  }
-
-  if (body.password !== CLAVE_ADMIN) {
+  if (e.parameter.password !== CLAVE_ADMIN) {
     return respuesta({ error: "Clave incorrecta" });
   }
 
-  if (body.action === "guardar") {
-    return respuesta(guardarProducto(body.producto));
+  if (accion === "listar") {
+    return respuesta({ productos: listarProductos() });
   }
 
-  if (body.action === "eliminar") {
-    return respuesta(eliminarProducto(body.id));
+  if (accion === "guardar") {
+    const p = {
+      id: e.parameter.id,
+      tipo: e.parameter.tipo,
+      nombre: e.parameter.nombre,
+      precio: e.parameter.precio,
+      material: e.parameter.material,
+      descripcion: e.parameter.descripcion,
+      imagen: e.parameter.imagen,
+      estado: e.parameter.estado,
+      destacado: e.parameter.destacado,
+      orden: e.parameter.orden,
+      stock: e.parameter.stock
+    };
+    return respuesta(guardarProducto(p));
+  }
+
+  if (accion === "eliminar") {
+    return respuesta(eliminarProducto(e.parameter.id));
   }
 
   return respuesta({ error: "Acción no reconocida" });

@@ -3,7 +3,7 @@
 // ============================================
 
 // Pega aquí tu URL de Apps Script (ver ADMIN_SETUP.md)
-const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbyZCsQuykEiyuyS-85W0y4wV4ANszeSaPfo0I00lWC9YiZLrXJ6j_Y_lpS93al3GliBig/exec";
+const ADMIN_API_URL = "PEGA_AQUI_TU_URL_DE_APPS_SCRIPT";
 
 const SESSION_KEY = "orizaAdminPass";
 
@@ -14,17 +14,7 @@ function getPassword() {
     return sessionStorage.getItem(SESSION_KEY) || "";
 }
 
-async function llamarApi(params, metodo, body) {
-
-    if (metodo === "POST") {
-        const res = await fetch(ADMIN_API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" }, // evita preflight CORS
-            body: JSON.stringify({ ...body, password: getPassword() })
-        });
-        return res.json();
-    }
-
+async function llamarApi(params) {
     const query = new URLSearchParams({ ...params, password: getPassword() }).toString();
     const res = await fetch(`${ADMIN_API_URL}?${query}`);
     return res.json();
@@ -166,7 +156,7 @@ async function guardarFormulario(e) {
 
     let resultado;
     try {
-        resultado = await llamarApi(null, "POST", { action: "guardar", producto });
+        resultado = await llamarApi({ action: "guardar", ...producto });
     } catch (error) {
         resultado = { error: "No se pudo conectar con el backend." };
     }
@@ -192,7 +182,7 @@ async function eliminarProductoAdmin(id) {
 
     let resultado;
     try {
-        resultado = await llamarApi(null, "POST", { action: "eliminar", id });
+        resultado = await llamarApi({ action: "eliminar", id });
     } catch (error) {
         resultado = { error: "No se pudo conectar con el backend." };
     }
@@ -215,7 +205,7 @@ async function actualizarStockRapido(id, nuevoStock) {
 
     let resultado;
     try {
-        resultado = await llamarApi(null, "POST", { action: "guardar", producto: actualizado });
+        resultado = await llamarApi({ action: "guardar", ...actualizado });
     } catch (error) {
         resultado = { error: "No se pudo conectar con el backend." };
     }
@@ -239,7 +229,7 @@ async function toggleEstado(id) {
 
     let resultado;
     try {
-        resultado = await llamarApi(null, "POST", { action: "guardar", producto: actualizado });
+        resultado = await llamarApi({ action: "guardar", ...actualizado });
     } catch (error) {
         resultado = { error: "No se pudo conectar con el backend." };
     }
