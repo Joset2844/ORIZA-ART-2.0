@@ -42,24 +42,88 @@ async function iniciarSesion(password) {
 
     sessionStorage.setItem(SESSION_KEY, password);
 
+    const boton = document.querySelector("#login-form button");
+    const input = document.getElementById("login-password");
+
+    if (boton) {
+    boton.disabled = true;
+    boton.textContent = "Ingresando...";
+    }
+
+    if (input) {
+    input.disabled = true;
+    }
+
     let data;
+    document.getElementById("login-vista").hidden = true;
+    document.getElementById("loader-vista").hidden = false;
+
     try {
         data = await llamarApi({ action: "listar" });
     } catch (error) {
-        mostrarErrorLogin("No se pudo conectar: " + error.message);
-        return false;
+
+    if (boton) {
+        boton.disabled = false;
+        boton.textContent = "Entrar";
     }
 
-    if (data.error) {
-        sessionStorage.removeItem(SESSION_KEY);
-        mostrarErrorLogin(data.error === "Clave incorrecta" ? "Contraseña incorrecta." : data.error);
-        return false;
+    if (input) {
+        input.disabled = false;
     }
+
+    mostrarErrorLogin("No se pudo conectar: " + error.message);
+
+    return false;
+    }  
+
+    if (data.error) {
+
+    sessionStorage.removeItem(SESSION_KEY);
+
+    if (boton) {
+        boton.disabled = false;
+        boton.textContent = "Entrar";
+    }
+
+    if (input) {
+        input.disabled = false;
+        input.focus();
+    }
+
+    mostrarErrorLogin(
+        data.error === "Clave incorrecta"
+            ? "Contraseña incorrecta."
+            : data.error
+    );
+
+    return false;
+}
 
     productosAdmin = data.productos;
     mostrarPanel();
     renderizarTabla();
     return true;
+}
+
+function mostrarToast(mensaje, tipo = "info") {
+
+    const toast = document.getElementById("toast");
+    if (!toast) return;
+
+    toast.className = "";
+    toast.id = "toast";
+
+    toast.textContent = mensaje;
+
+    toast.classList.add(tipo);
+    toast.classList.add("mostrar");
+
+    clearTimeout(toast.timer);
+
+    toast.timer = setTimeout(() => {
+        toast.classList.remove("mostrar");
+    }, 3000);
+
 }
 
 function mostrarErrorLogin(msg) {
@@ -71,8 +135,11 @@ function mostrarErrorLogin(msg) {
 }
 
 function mostrarPanel() {
+
+    document.getElementById("loader-vista").hidden = true;
     document.getElementById("login-vista").hidden = true;
     document.getElementById("panel-vista").hidden = false;
+
 }
 
 function cerrarSesion() {
@@ -148,10 +215,10 @@ async function guardarFormulario(e) {
     e.preventDefault();
 
     const id = document.getElementById("f-id").value.trim();
-    if (!id) { alert("El ID es obligatorio."); return; }
+    if (!id) { mostrarToast("El ID es obligatorio."); return; }
 
     if (!editandoId && productosAdmin.some(p => p.id === id)) {
-        alert("Ya existe un producto con ese ID.");
+        mostrarToast("Ya existe un producto con ese ID.");
         return;
     }
 
@@ -182,13 +249,14 @@ async function guardarFormulario(e) {
     if (btn) { btn.disabled = false; btn.textContent = "Guardar"; }
 
     if (resultado.error) {
-        alert("Error al guardar: " + resultado.error);
+        mostrarToast("Error al guardar: " + resultado.error);
         return;
     }
 
     cerrarFormulario();
     await recargarProductos();
 
+    mostrarToast("Producto guardado correctamente", "ok");
 }
 
 async function eliminarProductoAdmin(id) {
@@ -206,12 +274,13 @@ async function eliminarProductoAdmin(id) {
     }
 
     if (resultado.error) {
-        alert("Error al eliminar: " + resultado.error);
+        mostrarToast("Error al eliminar: " + resultado.error);
         return;
     }
 
     await recargarProductos();
 
+    mostrarToast("Producto eliminado", "ok");
 }
 
 async function actualizarStockRapido(id, nuevoStock) {
@@ -229,12 +298,13 @@ async function actualizarStockRapido(id, nuevoStock) {
     }
 
     if (resultado.error) {
-        alert("Error al actualizar stock: " + resultado.error);
+        mostrarToast("Error al actualizar stock: " + resultado.error);
         return;
     }
 
     producto.stock = Number(nuevoStock);
 
+    mostrarToast("Stock actualizado", "ok");
 }
 
 async function toggleEstado(id) {
@@ -253,7 +323,7 @@ async function toggleEstado(id) {
     }
 
     if (resultado.error) {
-        alert("Error: " + resultado.error);
+        mostrarToast("Error: " + resultado.error);
         return;
     }
 
@@ -268,12 +338,12 @@ async function recargarProductos() {
     try {
         data = await llamarApi({ action: "listar" });
     } catch (error) {
-        alert("No se pudo conectar: " + error.message);
+        mostrarToast("No se pudo conectar: " + error.message);
         return;
     }
 
     if (data.error) {
-        alert("Error al recargar: " + data.error);
+        mostrarToast("Error al recargar: " + data.error);
         return;
     }
 
