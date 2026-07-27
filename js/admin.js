@@ -562,3 +562,54 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 });
+
+document.querySelectorAll('#tabla-admin th[data-col]').forEach(header => {
+    header.style.cursor = 'pointer'; // Hace que la cabecera sea clickeable
+    
+    header.addEventListener('click', () => {
+        const table = header.closest('table');
+        const tbody = table.querySelector('tbody');
+        const columnIndex = parseInt(header.getAttribute('data-col'));
+        const tipo = header.getAttribute('data-tipo');
+        
+        // Determinar si ordenamos ascendente o descendente
+        const isAsc = header.classList.contains('asc');
+        
+        // Resetear iconos de todas las cabeceras
+        table.querySelectorAll('th span.sort-icon').forEach(icon => icon.textContent = '↕');
+        table.querySelectorAll('th').forEach(th => th.classList.remove('asc', 'desc'));
+
+        // Obtener todas las filas
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        // Ordenar las filas
+        rows.sort((rowA, rowB) => {
+            let cellA = rowA.children[columnIndex]?.textContent.trim() || '';
+            let cellB = rowB.children[columnIndex]?.textContent.trim() || '';
+
+            if (tipo === 'num' || tipo === 'precio') {
+                // Limpiar símbolos de moneda o caracteres no numéricos
+                const numA = parseFloat(cellA.replace(/[^0-9.-]+/g, '')) || 0;
+                const numB = parseFloat(cellB.replace(/[^0-9.-]+/g, '')) || 0;
+                return isAsc ? numB - numA : numA - numB;
+            } else {
+                // Orden alfabético
+                return isAsc 
+                    ? cellB.localeCompare(cellA, undefined, { numeric: true }) 
+                    : cellA.localeCompare(cellB, undefined, { numeric: true });
+            }
+        });
+
+        // Aplicar la nueva dirección y actualizar el icono
+        if (isAsc) {
+            header.classList.add('desc');
+            header.querySelector('.sort-icon').textContent = '↓';
+        } else {
+            header.classList.add('asc');
+            header.querySelector('.sort-icon').textContent = '↑';
+        }
+
+        // Reinsertar las filas en el nuevo orden
+        rows.forEach(row => tbody.appendChild(row));
+    });
+});
