@@ -968,3 +968,18 @@ grid-template-columns:1fr;
     color:white;
 
 }
+
+.tabla-admin th[data-col] {
+    cursor: pointer;
+    user-select: none;
+}
+
+.tabla-admin th[data-col]:hover {
+    background-color: rgba(0, 0, 0, 0.05); /* Efecto hover */
+}
+
+.sort-icon {
+    font-size: 0.8em;
+    margin-left: 4px;
+    opacity: 0.6;
+}
