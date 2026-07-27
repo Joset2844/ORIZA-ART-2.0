@@ -267,14 +267,17 @@ body{
 .form-producto{
     background:#fff;
     border-radius:20px;
-    padding:26px;
-    width:100%;
-    max-width:460px;
-    max-height:90vh;
+
+    width:min(1200px,95vw);
+
+    max-height:92vh;
+
     overflow-y:auto;
+
+    padding:26px;
+
     display:flex;
     flex-direction:column;
-    gap:16px;
 }
 
 .form-header{
@@ -453,4 +456,515 @@ body{
 
 #toast.info{
     background:#6F4E37;
+}
+
+/*=========================
+ BARRA SUPERIOR
+=========================*/
+
+.barra-herramientas{
+
+    display:flex;
+    gap:15px;
+
+    flex-wrap:wrap;
+
+    margin-bottom:20px;
+
+}
+
+.barra-herramientas input,
+.barra-herramientas select{
+
+    padding:12px 16px;
+
+    border-radius:12px;
+
+    border:1px solid #ddd;
+
+    font-size:.95rem;
+
+}
+
+#buscar-producto{
+
+    flex:1;
+
+    min-width:250px;
+
+}
+
+/*=========================
+ TARJETA PRODUCTO
+=========================*/
+
+.producto-admin{
+
+display:flex;
+
+align-items:center;
+
+gap:14px;
+
+}
+
+.producto-admin img{
+
+width:58px;
+
+height:58px;
+
+object-fit:cover;
+
+border-radius:12px;
+
+background:#eee;
+
+border:1px solid #eee;
+
+}
+
+.producto-admin strong{
+
+display:block;
+
+font-size:.95rem;
+
+}
+
+.producto-admin small{
+
+color:#999;
+
+font-size:.8rem;
+
+}
+
+.stock-box{
+
+display:flex;
+
+flex-direction:column;
+
+gap:8px;
+
+}
+
+.barra-stock{
+
+height:7px;
+
+background:#ececec;
+
+border-radius:20px;
+
+overflow:hidden;
+
+width:90px;
+
+}
+
+.barra-stock-fill{
+
+height:100%;
+
+transition:.25s;
+
+}
+
+.verde{
+
+background:#4CAF50;
+
+}
+
+.amarillo{
+
+background:#F9A825;
+
+}
+
+.rojo{
+
+background:#D32F2F;
+
+}
+
+.preview-admin{
+
+margin-top:25px;
+
+border-top:1px solid #eee;
+
+padding-top:25px;
+
+}
+
+.preview-card{
+
+border:1px solid #eee;
+
+border-radius:18px;
+
+padding:18px;
+
+background:#fffaf7;
+
+text-align:center;
+
+}
+
+.preview-card img{
+
+width:100%;
+
+aspect-ratio:1;
+
+object-fit:cover;
+
+border-radius:14px;
+
+background:#eee;
+
+margin-bottom:18px;
+
+}
+
+.preview-card h3{
+
+color:#6F4E37;
+
+margin-bottom:10px;
+
+}
+
+.preview-card p{
+
+margin:8px 0;
+
+}
+
+.btn-preview{
+
+margin-top:16px;
+
+width:100%;
+
+padding:13px;
+
+background:#6F4E37;
+
+border:none;
+
+color:white;
+
+border-radius:40px;
+
+font-weight:600;
+
+}
+
+/*==================================
+    MODAL V2
+===================================*/
+
+.form-overlay .form-producto{
+
+    width:min(1200px,95vw);
+
+    max-height:92vh;
+
+}
+
+.form-layout{
+
+    display:grid;
+
+    grid-template-columns:minmax(420px,1fr) 420px;
+
+    gap:35px;
+
+    align-items:start;
+
+}
+
+.form-col{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:16px;
+
+}
+
+.preview-col{
+
+    position:sticky;
+
+    top:0;
+
+}
+
+.form-header,
+.form-col > label:nth-child(3),
+.form-col > label:nth-child(6),
+.form-col > label:nth-child(7){
+
+    grid-column:1 / -1;
+
+}
+
+@media(max-width:900px){
+
+.form-layout{
+
+grid-template-columns:1fr;
+
+}
+
+.form-col{
+
+grid-template-columns:1fr;
+
+}
+
+}
+
+/* ============================================
+   VISTA PREVIA PRODUCTO - ADMIN
+============================================ */
+
+.preview-col{
+    display:flex;
+    justify-content:center;
+}
+
+
+.preview-card{
+
+    width:100%;
+    max-width:380px;
+
+    background:#fff;
+
+    border-radius:22px;
+
+    overflow:hidden;
+
+    border:1px solid #eee;
+
+    box-shadow:0 10px 30px rgba(0,0,0,.08);
+
+}
+
+
+/* Imagen */
+
+.preview-imagen{
+
+    position:relative;
+
+    width:100%;
+
+    aspect-ratio:1/1;
+
+    background:#f7f4f0;
+
+}
+
+
+.preview-imagen img{
+
+    width:100%;
+
+    height:100%;
+
+    object-fit:cover;
+
+}
+
+
+/* Etiqueta tipo */
+
+.preview-badge{
+
+    position:absolute;
+
+    top:15px;
+
+    left:15px;
+
+    background:#6F4E37;
+
+    color:white;
+
+    padding:6px 12px;
+
+    border-radius:30px;
+
+    font-size:12px;
+
+    font-weight:600;
+
+}
+
+
+/* Destacado */
+
+.preview-star{
+
+    position:absolute;
+
+    top:15px;
+
+    right:15px;
+
+    background:white;
+
+    padding:6px 12px;
+
+    border-radius:30px;
+
+    font-size:12px;
+
+}
+
+
+/* Información */
+
+.preview-info{
+
+    padding:22px;
+
+    text-align:center;
+
+}
+
+
+.preview-info h2{
+
+    margin:0 0 10px;
+
+    font-size:22px;
+
+    color:#3d2b1f;
+
+}
+
+
+.preview-precio{
+
+    font-size:24px;
+
+    font-weight:700;
+
+    color:#6F4E37;
+
+    margin-bottom:12px;
+
+}
+
+
+.preview-stock{
+
+    display:inline-block;
+
+    padding:6px 14px;
+
+    border-radius:20px;
+
+    font-size:13px;
+
+    margin-bottom:15px;
+
+}
+
+
+.preview-stock.disponible{
+
+    background:#e8f5e9;
+
+    color:#2e7d32;
+
+}
+
+
+.preview-stock.agotado{
+
+    background:#ffebee;
+
+    color:#c62828;
+
+}
+
+
+.preview-material{
+
+    font-size:14px;
+
+    color:#777;
+
+    margin-bottom:15px;
+
+}
+
+
+.preview-descripcion{
+
+    color:#555;
+
+    font-size:14px;
+
+    line-height:1.5;
+
+}
+
+
+/* Botones */
+
+.preview-botones{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:10px;
+
+    margin-top:20px;
+
+}
+
+
+.btn-preview-carrito,
+.btn-preview-whatsapp{
+
+    border:none;
+
+    padding:13px;
+
+    border-radius:30px;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+}
+
+
+.btn-preview-carrito{
+
+    background:#6F4E37;
+
+    color:white;
+
+}
+
+
+.btn-preview-whatsapp{
+
+    background:#25D366;
+
+    color:white;
+
 }
