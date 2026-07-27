@@ -45,6 +45,31 @@
         </div>
     </header>
 
+<div class="barra-herramientas">
+
+    <input
+        id="buscar-producto"
+        type="text"
+        placeholder="🔍 Buscar por nombre o ID">
+
+    <select id="filtro-tipo">
+
+        <option value="">Todos</option>
+        <option value="PULSERA">Pulseras</option>
+        <option value="COLLAR">Collares</option>
+
+    </select>
+
+    <select id="filtro-estado">
+
+        <option value="">Todos</option>
+        <option value="ACTIVO">Activos</option>
+        <option value="INACTIVO">Inactivos</option>
+
+    </select>
+
+</div>
+
     <main class="admin-main">
         <div class="tabla-wrap">
             <table class="tabla-admin">
@@ -69,76 +94,163 @@
 <div id="form-overlay" class="form-overlay" hidden>
     <form id="form-producto" class="form-producto">
 
-        <div class="form-header">
-            <h2 id="form-titulo">Nuevo producto</h2>
-            <button type="button" id="form-cerrar" aria-label="Cerrar">✕</button>
+    <div class="form-layout">
+
+        <div class="form-col">
+
+            <div class="form-header">
+                <h2 id="form-titulo">Nuevo producto</h2>
+                <button type="button" id="form-cerrar" aria-label="Cerrar">✕</button>
+            </div>
+
+            <label>
+                <span>ID (único, ej. ES-PU-003)</span>
+                <input type="text" id="f-id" required>
+            </label>
+
+            <label>
+                <span>Tipo</span>
+                <select id="f-tipo">
+                    <option value="PULSERA">Pulsera</option>
+                    <option value="COLLAR">Collar</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Nombre</span>
+                <input type="text" id="f-nombre" required>
+            </label>
+
+            <label>
+                <span>Precio (S/)</span>
+                <input type="number" id="f-precio" step="0.10" min="0" required>
+            </label>
+
+            <label>
+                <span>Material</span>
+                <input type="text" id="f-material" placeholder="Separado por comas">
+            </label>
+
+            <label>
+                <span>Descripción</span>
+                <textarea id="f-descripcion" rows="3"></textarea>
+            </label>
+
+            <label>
+                <span>Imagen (URL, opcional)</span>
+                <input type="text" id="f-imagen" placeholder="https://...">
+                <small>Sube tu foto a imgbb.com o Drive y pega el link. Vacío = usa la imagen ya existente según el ID.</small>
+            </label>
+
+            <label>
+                <span>Estado</span>
+                <select id="f-estado">
+                    <option value="ACTIVO">Activo</option>
+                    <option value="INACTIVO">Inactivo</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Destacado</span>
+                <select id="f-destacado">
+                    <option value="NO">No</option>
+                    <option value="SI">Sí</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Orden</span>
+                <input type="number" id="f-orden" min="1">
+            </label>
+
+            <label>
+                <span>Stock</span>
+                <input type="number" id="f-stock" min="0" required>
+            </label>
+
         </div>
 
-        <label>
-            <span>ID (único, ej. ES-PU-003)</span>
-            <input type="text" id="f-id" required>
-        </label>
+            <div class="preview-col">
 
-        <label>
-            <span>Tipo</span>
-            <select id="f-tipo">
-                <option value="PULSERA">Pulsera</option>
-                <option value="COLLAR">Collar</option>
-            </select>
-        </label>
+                <div class="preview-admin">
 
-        <label>
-            <span>Nombre</span>
-            <input type="text" id="f-nombre" required>
-        </label>
+                <div class="preview-card">
 
-        <label>
-            <span>Precio (S/)</span>
-            <input type="number" id="f-precio" step="0.10" min="0" required>
-        </label>
+    <div class="preview-imagen">
 
-        <label>
-            <span>Material</span>
-            <input type="text" id="f-material" placeholder="Separado por comas">
-        </label>
+        <img id="preview-img"
+             src="img/no-image.webp"
+             alt="Producto">
 
-        <label>
-            <span>Descripción</span>
-            <textarea id="f-descripcion" rows="3"></textarea>
-        </label>
+        <span id="preview-tipo" class="preview-badge">
+            PULSERA
+        </span>
 
-        <label>
-            <span>Imagen (URL, opcional)</span>
-            <input type="text" id="f-imagen" placeholder="https://...">
-            <small>Sube tu foto a imgbb.com o Drive y pega el link. Vacío = usa la imagen ya existente según el ID.</small>
-        </label>
+        <span id="preview-destacado"
+              class="preview-star"
+              hidden>
+            ⭐ Destacado
+        </span>
 
-        <label>
-            <span>Estado</span>
-            <select id="f-estado">
-                <option value="ACTIVO">Activo</option>
-                <option value="INACTIVO">Inactivo</option>
-            </select>
-        </label>
+    </div>
 
-        <label>
-            <span>Destacado</span>
-            <select id="f-destacado">
-                <option value="NO">No</option>
-                <option value="SI">Sí</option>
-            </select>
-        </label>
+    <div class="preview-info">
 
-        <label>
-            <span>Orden</span>
-            <input type="number" id="f-orden" min="1">
-        </label>
+        <h2 id="preview-nombre">
+            Nombre del producto
+        </h2>
 
-        <label>
-            <span>Stock</span>
-            <input type="number" id="f-stock" min="0" required>
-        </label>
+        <div id="preview-precio"
+             class="preview-precio">
+            S/ 0.00
+        </div>
 
+        <div id="preview-stock"
+             class="preview-stock disponible">
+            Disponible
+        </div>
+
+        <div id="preview-material"
+             class="preview-material">
+            Material
+        </div>
+
+        <p id="preview-descripcion"
+           class="preview-descripcion">
+
+            Descripción...
+
+        </p>
+
+        <div class="preview-botones">
+
+            <button
+                class="btn-preview-carrito"
+                type="button">
+
+                🛒 Agregar al carrito
+
+            </button>
+
+            <button
+                class="btn-preview-whatsapp"
+                type="button">
+
+                💬 Consultar por WhatsApp
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+            </div>
+            
+        </div>
+
+    </div>
         <button type="submit" class="btn-primario">Guardar</button>
 
     </form>
