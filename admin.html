@@ -5,6 +5,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
+
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+
 <title>Admin | ORIZA ART</title>
 <link rel="stylesheet" href="css/admin.css">
 
@@ -21,9 +27,9 @@
     </form>
 </div>
 
-<div id="panel-vista">
+<div id="panel-vista" hidden>
 
-    <header class="admin-header" hidden>
+    <header class="admin-header">
         <h1>ORIZA ART · Admin</h1>
         <div class="admin-header-acciones">
             <button id="btn-nuevo" class="btn-primario">+ Nuevo producto</button>
@@ -57,7 +63,7 @@
 
         <div class="form-header">
             <h2 id="form-titulo">Nuevo producto</h2>
-            <button type="button" id="cerrarFormulario" aria-label="Cerrar">✕</button>
+            <button type="button" id="form-cerrar" aria-label="Cerrar">✕</button>
         </div>
 
         <label>

@@ -284,8 +284,14 @@ async function recargarProductos() {
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    sessionStorage.removeItem(SESSION_KEY);
+    // sessionStorage.removeItem(SESSION_KEY);
 
+    const passwordGuardada = sessionStorage.getItem(SESSION_KEY);
+
+    if (passwordGuardada) {
+    iniciarSesion(passwordGuardada);
+    }
+    
     document.getElementById("login-form")?.addEventListener("submit", (e) => {
         e.preventDefault();
         const pass = document.getElementById("login-password").value;

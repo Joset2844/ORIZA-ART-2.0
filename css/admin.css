@@ -351,3 +351,11 @@ body{
         align-items:flex-start;
     }
 }
+
+/* ======================================
+   Respeta el atributo hidden
+====================================== */
+
+[hidden]{
+    display:none !important;
+}
