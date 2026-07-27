@@ -39,6 +39,22 @@ ningún servidor.
 
 Abre `tuweb.com/admin.html` y entra con la contraseña que pusiste en el paso 1.
 
+## Si algo falla
+
+Ahora los errores muestran el mensaje real del navegador (no uno genérico). Con eso:
+
+- **"No configuraste ADMIN_API_URL..."** → falta pegar la URL en `js/admin.js`.
+- **"Failed to fetch"** → normalmente es que la implementación de Apps Script no está
+  como "Cualquier usuario" en acceso, o falta volver a implementar tras editar el código
+  (Implementar > Administrar implementaciones > ✎ Editar > **Nueva versión** > Implementar).
+- **Importante:** pegar la URL directamente en la barra del navegador y ver que
+  devuelve JSON **no prueba que funcione desde el panel** — eso es una navegación
+  normal y no pasa por las reglas de CORS. El panel usa `fetch()` desde
+  `joset2844.github.io`, que sí las aplica. Si funciona pegada en el navegador pero
+  falla desde el panel, es un tema de permisos/CORS de la implementación: revisa que
+  "Ejecutar como" sea **Yo** y "Quién tiene acceso" sea **Cualquier usuario**, y
+  vuelve a implementar una **Nueva versión** (no solo guardar el código).
+
 ## Notas importantes
 
 - **La columna STOCK (12/L) debe existir en tu Sheet** para que el admin

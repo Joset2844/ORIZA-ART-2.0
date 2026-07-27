@@ -15,9 +15,27 @@ function getPassword() {
 }
 
 async function llamarApi(params) {
+
+    if (!ADMIN_API_URL || ADMIN_API_URL.includes("PEGA_AQUI")) {
+        throw new Error("No configuraste ADMIN_API_URL en js/admin.js con la URL de tu Apps Script.");
+    }
+
     const query = new URLSearchParams({ ...params, password: getPassword() }).toString();
     const res = await fetch(`${ADMIN_API_URL}?${query}`);
-    return res.json();
+
+    if (!res.ok) {
+        throw new Error(`El servidor respondió con estado ${res.status}`);
+    }
+
+    const texto = await res.text();
+
+    try {
+        return JSON.parse(texto);
+    } catch (e) {
+        console.error("Respuesta no era JSON:", texto);
+        throw new Error("El backend no devolvió JSON válido (revisa que Apps Script esté bien desplegado).");
+    }
+
 }
 
 async function iniciarSesion(password) {
@@ -28,7 +46,7 @@ async function iniciarSesion(password) {
     try {
         data = await llamarApi({ action: "listar" });
     } catch (error) {
-        mostrarErrorLogin("No se pudo conectar con el backend. Revisa ADMIN_API_URL en admin.js.");
+        mostrarErrorLogin("No se pudo conectar: " + error.message);
         return false;
     }
 
@@ -158,7 +176,7 @@ async function guardarFormulario(e) {
     try {
         resultado = await llamarApi({ action: "guardar", ...producto });
     } catch (error) {
-        resultado = { error: "No se pudo conectar con el backend." };
+        resultado = { error: error.message };
     }
 
     if (btn) { btn.disabled = false; btn.textContent = "Guardar"; }
@@ -184,7 +202,7 @@ async function eliminarProductoAdmin(id) {
     try {
         resultado = await llamarApi({ action: "eliminar", id });
     } catch (error) {
-        resultado = { error: "No se pudo conectar con el backend." };
+        resultado = { error: error.message };
     }
 
     if (resultado.error) {
@@ -207,7 +225,7 @@ async function actualizarStockRapido(id, nuevoStock) {
     try {
         resultado = await llamarApi({ action: "guardar", ...actualizado });
     } catch (error) {
-        resultado = { error: "No se pudo conectar con el backend." };
+        resultado = { error: error.message };
     }
 
     if (resultado.error) {
@@ -231,7 +249,7 @@ async function toggleEstado(id) {
     try {
         resultado = await llamarApi({ action: "guardar", ...actualizado });
     } catch (error) {
-        resultado = { error: "No se pudo conectar con el backend." };
+        resultado = { error: error.message };
     }
 
     if (resultado.error) {
@@ -250,7 +268,7 @@ async function recargarProductos() {
     try {
         data = await llamarApi({ action: "listar" });
     } catch (error) {
-        alert("No se pudo conectar con el backend.");
+        alert("No se pudo conectar: " + error.message);
         return;
     }
 
@@ -266,9 +284,7 @@ async function recargarProductos() {
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    if (getPassword()) {
-        iniciarSesion(getPassword());
-    }
+    sessionStorage.removeItem(SESSION_KEY);
 
     document.getElementById("login-form")?.addEventListener("submit", (e) => {
         e.preventDefault();
