@@ -8,6 +8,7 @@ const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbyZCsQuykEiyuyS-8
 const SESSION_KEY = "orizaAdminPass";
 
 let productosAdmin = [];
+let productosFiltrados = [];
 let editandoId = null;
 
 function getPassword() {
@@ -147,21 +148,89 @@ function cerrarSesion() {
     location.reload();
 }
 
+function aplicarFiltros(){
+
+    const texto =
+        document.getElementById("buscar-producto")
+        .value
+        .trim()
+        .toLowerCase();
+
+    const tipo =
+        document.getElementById("filtro-tipo").value;
+
+    const estado =
+        document.getElementById("filtro-estado").value;
+
+    productosFiltrados = productosAdmin.filter(p=>{
+
+        const coincideTexto =
+
+            p.nombre.toLowerCase().includes(texto) ||
+
+            p.id.toLowerCase().includes(texto);
+
+        const coincideTipo =
+
+            !tipo || p.tipo === tipo;
+
+        const coincideEstado =
+
+            !estado || p.estado === estado;
+
+        return coincideTexto && coincideTipo && coincideEstado;
+
+    });
+
+    renderizarTabla();
+
+}
+
 function renderizarTabla() {
 
     const tbody = document.getElementById("tabla-productos");
     if (!tbody) return;
 
-    tbody.innerHTML = productosAdmin.map(p => {
+    tbody.innerHTML = (productosFiltrados.length ? productosFiltrados : productosAdmin).map(p => {
         const activo = (p.estado || "").toString().toLowerCase() === "activo";
         return `
             <tr class="${activo ? "" : "fila-inactiva"}">
                 <td>${p.id}</td>
-                <td>${p.nombre}</td>
+                <td>
+
+                    <div class="producto-admin">
+
+                        <img src="${p.imagen || 'img/' + p.id + '.webp'}" loading="lazy" onerror="this.src='img/no-image.webp'">
+
+                        <div>
+
+                            <strong>${p.nombre}</strong>
+
+                            <small>${p.id}</small>
+
+                        </div>
+
+                    </div>
+
+                </td>
                 <td>${p.tipo}</td>
                 <td>S/ ${Number(p.precio || 0).toFixed(2)}</td>
                 <td>
+
+                    <div class="stock-box">
+
                     <input type="number" min="0" class="input-stock" data-id="${p.id}" value="${p.stock ?? 0}">
+
+                        <div class="barra-stock">
+
+                            <div class="barra-stock-fill ${Number(p.stock)<=3?'rojo':Number(p.stock)<=10?'amarillo':'verde'}"
+                            style="width:${Math.min(Number(p.stock)*5,100)}%">
+                            </div>
+
+                        </div>
+
+                    </div>
+
                 </td>
                 <td>
                     <button class="badge-estado ${activo ? "activo" : "inactivo"}" data-accion="toggle-estado" data-id="${p.id}">
@@ -188,7 +257,7 @@ function abrirFormulario(producto) {
     idInput.value = producto?.id || "";
     idInput.disabled = !!producto;
 
-    document.getElementById("f-tipo").value = producto?.tipo || "PULSERA";
+    document.getElementById("f-tipo").value = producto?.tipo || "";
     document.getElementById("f-nombre").value = producto?.nombre || "";
     document.getElementById("f-precio").value = producto?.precio || "";
     document.getElementById("f-material").value = producto?.material || "";
@@ -204,11 +273,14 @@ function abrirFormulario(producto) {
 
     document.getElementById("form-overlay").hidden = false;
 
+    actualizarPreview();
 }
 
 function cerrarFormulario() {
     document.getElementById("form-overlay").hidden = true;
 }
+
+
 
 async function guardarFormulario(e) {
 
@@ -304,6 +376,8 @@ async function actualizarStockRapido(id, nuevoStock) {
 
     producto.stock = Number(nuevoStock);
 
+    renderizarTabla();
+
     mostrarToast("Stock actualizado", "ok");
 }
 
@@ -352,6 +426,70 @@ async function recargarProductos() {
 
 }
 
+function actualizarPreview() {
+
+    const nombre = document.getElementById("f-nombre").value.trim();
+    const precio = Number(document.getElementById("f-precio").value || 0);
+    const material = document.getElementById("f-material").value.trim();
+    const descripcion = document.getElementById("f-descripcion").value.trim();
+    const imagen = document.getElementById("f-imagen").value.trim();
+    const id = document.getElementById("f-id").value.trim();
+
+    const tipo = document.getElementById("f-tipo").value;
+
+    document.getElementById("preview-tipo").textContent = tipo || "TIPO";
+    
+    document.getElementById("preview-nombre").textContent =
+        nombre || "Nombre del producto";
+
+    document.getElementById("preview-precio").textContent =
+        "S/ " + precio.toFixed(2);
+
+    document.getElementById("preview-material").textContent =
+        material || "Material";
+
+    document.getElementById("preview-descripcion").textContent =
+        descripcion || "Descripción del producto";
+
+    const img = document.getElementById("preview-img");
+
+let nuevaImagen = "";
+
+if (imagen !== "") {
+
+    nuevaImagen = imagen;
+
+} else if (id !== "") {
+
+    nuevaImagen = `img/productos/${id}.webp`;
+
+} else {
+
+    nuevaImagen = "img/no-image.webp";
+
+}
+
+
+// Evita recargar la misma imagen constantemente
+if (img.src !== nuevaImagen) {
+
+    img.src = nuevaImagen;
+
+}
+
+
+img.onerror = () => {
+
+    if (!img.src.includes("no-image.webp")) {
+
+        img.src = "img/no-image.webp";
+
+    }
+
+};
+
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 
     // sessionStorage.removeItem(SESSION_KEY);
@@ -396,5 +534,31 @@ document.addEventListener("DOMContentLoaded", () => {
             actualizarStockRapido(e.target.dataset.id, e.target.value);
         }
     });
+
+    document.getElementById("buscar-producto") ?.addEventListener("input", aplicarFiltros);
+
+    document.getElementById("filtro-tipo") ?.addEventListener("change", aplicarFiltros);
+
+    document.getElementById("filtro-estado") ?.addEventListener("change", aplicarFiltros);
+
+    [
+"f-id",
+"f-nombre",
+"f-precio",
+"f-material",
+"f-descripcion",
+"f-imagen",
+"f-tipo",
+"f-destacado",
+"f-stock"
+].forEach(id=>{
+
+    document.getElementById(id)
+    ?.addEventListener("input", actualizarPreview);
+
+    document.getElementById(id)
+    ?.addEventListener("change", actualizarPreview);
+
+});
 
 });
