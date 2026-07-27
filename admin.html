@@ -71,23 +71,25 @@
 </div>
 
     <main class="admin-main">
-        <div class="tabla-wrap">
-            <table class="tabla-admin">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Tipo</th>
-                        <th>Precio</th>
-                        <th>Stock</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-productos"></tbody>
-            </table>
-        </div>
-    </main>
+    <div class="tabla-wrap">
+        <table class="tabla-admin" id="tabla-admin">
+            <thead>
+                <tr>
+                    <th data-col="0" data-tipo="num">ID <span class="sort-icon">↕</span></th>
+                    <th data-col="1" data-tipo="text">Nombre <span class="sort-icon">↕</span></th>
+                    <th data-col="2" data-tipo="text">Tipo <span class="sort-icon">↕</span></th>
+                    <th data-col="3" data-tipo="precio">Precio <span class="sort-icon">↕</span></th>
+                    <th data-col="4" data-tipo="num">Stock <span class="sort-icon">↕</span></th>
+                    <th data-col="5" data-tipo="text">Estado <span class="sort-icon">↕</span></th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-productos">
+                <!-- Aquí van tus filas cargadas por JS -->
+            </tbody>
+        </table>
+    </div>
+</main>
 
 </div>
 
