@@ -3,7 +3,7 @@
 // ============================================
 
 // Pega aquí tu URL de Apps Script (ver ADMIN_SETUP.md)
-const ADMIN_API_URL = "PEGA_AQUI_TU_URL_DE_APPS_SCRIPT";
+const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbyZCsQuykEiyuyS-85W0y4wV4ANszeSaPfo0I00lWC9YiZLrXJ6j_Y_lpS93al3GliBig/exec";
 
 const SESSION_KEY = "orizaAdminPass";
 
