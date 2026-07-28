@@ -187,50 +187,45 @@ function aplicarFiltros(){
 }
 
 function renderizarTabla() {
-
     const tbody = document.getElementById("tabla-productos");
     if (!tbody) return;
 
     tbody.innerHTML = (productosFiltrados.length ? productosFiltrados : productosAdmin).map(p => {
         const activo = (p.estado || "").toString().toLowerCase() === "activo";
+        
+        // CORRECCIÓN: Ruta de imagen alineada con la convención local del sitio
+        let fotoTabla = "img/no-image.webp";
+        if (p.imagen && p.imagen.startsWith("http")) {
+            fotoTabla = p.imagen.split(",")[0].trim();
+        } else if (p.imagen && !p.imagen.includes("no-image")) {
+            fotoTabla = p.imagen;
+        } else if (p.id) {
+            fotoTabla = `img/${p.id}.webp`;
+        }
+
         return `
             <tr class="${activo ? "" : "fila-inactiva"}">
                 <td>${p.id}</td>
                 <td>
-
                     <div class="producto-admin">
-
-                        <img src="${p.imagen || 'img/' + p.id + '.webp'}" loading="lazy" onerror="this.src='img/no-image.webp'">
-
+                        <img src="${fotoTabla}" loading="lazy" onerror="this.src='img/no-image.webp'">
                         <div>
-
                             <strong>${p.nombre}</strong>
-
                             <small>${p.id}</small>
-
                         </div>
-
                     </div>
-
                 </td>
                 <td>${p.tipo}</td>
                 <td>S/ ${Number(p.precio || 0).toFixed(2)}</td>
                 <td>
-
                     <div class="stock-box">
-
                     <input type="number" min="0" class="input-stock" data-id="${p.id}" value="${p.stock ?? 0}">
-
                         <div class="barra-stock">
-
                             <div class="barra-stock-fill ${Number(p.stock)<=3?'rojo':Number(p.stock)<=10?'amarillo':'verde'}"
                             style="width:${Math.min(Number(p.stock)*5,100)}%">
                             </div>
-
                         </div>
-
                     </div>
-
                 </td>
                 <td>
                     <button class="badge-estado ${activo ? "activo" : "inactivo"}" data-accion="toggle-estado" data-id="${p.id}">
@@ -244,7 +239,70 @@ function renderizarTabla() {
             </tr>
         `;
     }).join("") || `<tr><td colspan="7" class="tabla-vacia">Aún no hay productos.</td></tr>`;
+}
 
+function actualizarPreview() {
+    const nombre = document.getElementById("f-nombre").value.trim();
+    const precio = Number(document.getElementById("f-precio").value || 0);
+    const material = document.getElementById("f-material").value.trim();
+    const descripcion = document.getElementById("f-descripcion").value.trim();
+    const imagen = document.getElementById("f-imagen").value.trim();
+    const id = document.getElementById("f-id").value.trim();
+    const tipo = document.getElementById("f-tipo").value;
+    const destacado = document.getElementById("f-destacado").value;
+    const stock = Number(document.getElementById("f-stock").value || 0);
+
+    // Actualización de textos de la vista previa
+    document.getElementById("preview-tipo").textContent = tipo || "TIPO";
+    document.getElementById("preview-nombre").textContent = nombre || "Nombre del producto";
+    document.getElementById("preview-precio").textContent = "S/ " + precio.toFixed(2);
+    document.getElementById("preview-material").textContent = material ? `Materiales: ${material}` : "Materiales no especificados";
+    document.getElementById("preview-descripcion").textContent = descripcion || "Sin descripción disponible...";
+
+    // Badge de destacado
+    const starBadge = document.getElementById("preview-destacado");
+    if (starBadge) {
+        starBadge.hidden = destacado !== "SI";
+    }
+
+    // Badge de stock
+    const stockBadge = document.getElementById("preview-stock");
+    if (stockBadge) {
+        if (stock <= 0) {
+            stockBadge.textContent = "Agotado";
+            stockBadge.className = "preview-stock agotado";
+        } else if (stock <= 3) {
+            stockBadge.textContent = `¡Últimas ${stock} unidades!`;
+            stockBadge.className = "preview-stock agotado";
+        } else {
+            stockBadge.textContent = "Disponible";
+            stockBadge.className = "preview-stock disponible";
+        }
+    }
+
+    // LÓGICA DE DETECCIÓN DE IMAGEN LOCAL O EXTERNA
+    const img = document.getElementById("preview-img");
+    let nuevaImagen = "img/no-image.webp";
+
+    if (imagen.startsWith("http")) {
+        // Toma la primera URL si el usuario colocó enlaces separados por coma
+        nuevaImagen = imagen.split(",")[0].trim();
+    } else if (imagen !== "") {
+        nuevaImagen = imagen;
+    } else if (id !== "") {
+        // Busca en la carpeta raíz 'img/[ID].webp'
+        nuevaImagen = `img/${id}.webp`;
+    }
+
+    if (img.src !== nuevaImagen) {
+        img.src = nuevaImagen;
+    }
+
+    img.onerror = () => {
+        if (!img.src.includes("no-image.webp")) {
+            img.src = "img/no-image.webp";
+        }
+    };
 }
 
 function abrirFormulario(producto) {
@@ -423,70 +481,6 @@ async function recargarProductos() {
 
     productosAdmin = data.productos;
     renderizarTabla();
-
-}
-
-function actualizarPreview() {
-
-    const nombre = document.getElementById("f-nombre").value.trim();
-    const precio = Number(document.getElementById("f-precio").value || 0);
-    const material = document.getElementById("f-material").value.trim();
-    const descripcion = document.getElementById("f-descripcion").value.trim();
-    const imagen = document.getElementById("f-imagen").value.trim();
-    const id = document.getElementById("f-id").value.trim();
-
-    const tipo = document.getElementById("f-tipo").value;
-
-    document.getElementById("preview-tipo").textContent = tipo || "TIPO";
-    
-    document.getElementById("preview-nombre").textContent =
-        nombre || "Nombre del producto";
-
-    document.getElementById("preview-precio").textContent =
-        "S/ " + precio.toFixed(2);
-
-    document.getElementById("preview-material").textContent =
-        material || "Material";
-
-    document.getElementById("preview-descripcion").textContent =
-        descripcion || "Descripción del producto";
-
-    const img = document.getElementById("preview-img");
-
-let nuevaImagen = "";
-
-if (imagen !== "") {
-
-    nuevaImagen = imagen;
-
-} else if (id !== "") {
-
-    nuevaImagen = `img/productos/${id}.webp`;
-
-} else {
-
-    nuevaImagen = "img/no-image.webp";
-
-}
-
-
-// Evita recargar la misma imagen constantemente
-if (img.src !== nuevaImagen) {
-
-    img.src = nuevaImagen;
-
-}
-
-
-img.onerror = () => {
-
-    if (!img.src.includes("no-image.webp")) {
-
-        img.src = "img/no-image.webp";
-
-    }
-
-};
 
 }
 

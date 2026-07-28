@@ -85,7 +85,30 @@
 
     <button class="filtro" data-categoria="collar">Collares</button>
 
+    <button class="filtro" data-categoria="favoritos">❤️ Mis Favoritos</button>
+
 </div>
+
+<div class="catalogo-bar">
+    <div class="orden-selector">
+        <label for="selectOrden">Ordenar por:</label>
+        <select id="selectOrden">
+            <option value="relevantes">Más relevantes</option>
+            <option value="precio-asc">Precio: menor a mayor</option>
+            <option value="precio-desc">Precio: mayor a menor</option>
+        </select>
+    </div>
+
+    <div class="vista-toggle">
+        <button id="btnVistaGrid" class="btn-vista activo" title="Vista Cuadrícula">
+            <span>田</span>
+        </button>
+        <button id="btnVistaList" class="btn-vista" title="Vista Lista">
+            <span>☰</span>
+        </button>
+    </div>
+</div>
+
     <p>
         Descubre pulseras y collares hechos completamente a mano.
     </p>

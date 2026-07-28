@@ -63,10 +63,15 @@
 
 <main class="producto">
 
-    <div class="producto-imagen">
-        <img id="imgProducto" src="" alt="">
+    <!-- GALERÍA DE IMÁGENES -->
+    <div class="producto-galeria">
+        <div class="producto-imagen-principal">
+            <img id="imgProducto" src="" alt="">
+        </div>
+        <div id="galeriaThumbs" class="galeria-thumbs"></div>
     </div>
 
+    <!-- INFORMACIÓN DEL PRODUCTO -->
     <div class="producto-info">
 
         <span id="categoriaProducto" class="categoria"></span>
@@ -78,6 +83,25 @@
         <p id="descripcionProducto"></p>
 
         <div id="materialesProducto" class="materiales-producto"></div>
+
+        <div class="producto-info">
+
+        <span id="categoriaProducto" class="categoria"></span>
+
+        <h1 id="nombreProducto"></h1>
+
+        <div class="producto-meta-acciones">
+        <button id="btnFavProducto" class="btn-favorito-producto">
+            <span>🤍</span> <span id="txtFavProducto">Guardar en favoritos</span>
+        </button>
+        <button id="btnShareProducto" class="btn-compartir-producto">
+            <span>🔗</span> Compartir
+        </button>
+        </div>
+
+    <h2 id="precioProducto" class="precio-producto"></h2>
+    
+    <!-- Resto del contenido (descripción, materiales, botones de compra) -->
 
         <div class="producto-acciones">
             <button id="btnAgregarCarrito" class="btn-producto">
