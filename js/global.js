@@ -55,6 +55,52 @@ async function compartirProducto(nombre, descripcion, url) {
     }
 }
 
+// 1. Registro del Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then((reg) => console.log('✅ Service Worker registrado con éxito:', reg.scope))
+            .catch((err) => console.error('❌ Error registrando Service Worker:', err));
+    });
+}
+
+// 2. Control de instalación desde el botón web
+let diferidoPrompt;
+const btnInstalar = document.getElementById('btn-instalar');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Previene que Android muestre el banner automático por defecto
+    e.preventDefault();
+    diferidoPrompt = e;
+
+    // Muestra el botón de instalación personalizado
+    if (btnInstalar) {
+        btnInstalar.style.display = 'inline-block';
+    }
+});
+
+if (btnInstalar) {
+    btnInstalar.addEventListener('click', async () => {
+        if (!diferidoPrompt) return;
+
+        // Muestra el cuadro de diálogo de instalación nativo de Android
+        diferidoPrompt.prompt();
+
+        const { outcome } = await diferidoPrompt.userChoice;
+        console.log(`El usuario tomó la decisión: ${outcome}`);
+
+        // Oculta el botón una vez procesado
+        diferidoPrompt = null;
+        btnInstalar.style.display = 'none';
+    });
+}
+
+// Oculta el botón si la app ya fue instalada previamente
+window.addEventListener('appinstalled', () => {
+    console.log('🎉 ¡App de ORIZA ART instalada correctamente!');
+    if (btnInstalar) btnInstalar.style.display = 'none';
+});
+
 document.addEventListener("DOMContentLoaded", () => {
 
     const flotante = document.getElementById("whatsapp-float");

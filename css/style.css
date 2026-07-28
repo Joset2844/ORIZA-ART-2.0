@@ -1782,3 +1782,22 @@ cursor:not-allowed;
         gap:30px;
     }
 }
+
+/* Botón de Instalación PWA */
+.btn-instalar-pwa {
+    background: #6F4E37;
+    color: #ffffff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(111, 78, 55, 0.2);
+    transition: all 0.3s ease;
+}
+
+.btn-instalar-pwa:hover {
+    background: #8A6146;
+    transform: translateY(-2px);
+}
