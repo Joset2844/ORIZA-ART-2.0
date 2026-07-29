@@ -1,10 +1,15 @@
-
-// ============================================
-// GESTIÓN DE FAVORITOS (localStorage)
-// ============================================
+/*=========================
+  GESTIÓN DE FAVORITOS (GLOBAL)
+=========================*/
 
 function obtenerFavoritos() {
-    return JSON.parse(localStorage.getItem("oriza_favoritos")) || [];
+    try {
+        const favs = localStorage.getItem("oriza_favoritos");
+        return favs ? JSON.parse(favs) : [];
+    } catch (e) {
+        console.error("Error al leer favoritos de localStorage:", e);
+        return [];
+    }
 }
 
 function esFavorito(id) {
@@ -15,15 +20,21 @@ function esFavorito(id) {
 function toggleFavorito(id) {
     let favs = obtenerFavoritos();
     const idNum = Number(id);
-    
-    if (favs.includes(idNum) || favs.includes(String(id))) {
-        favs = favs.filter(f => Number(f) !== idNum && String(f) !== String(id));
+    const index = favs.indexOf(idNum);
+
+    if (index >= 0) {
+        favs.splice(index, 1); // Quitar de favoritos
     } else {
-        favs.push(idNum);
+        favs.push(idNum); // Agregar a favoritos
     }
-    
-    localStorage.setItem("oriza_favoritos", JSON.stringify(favs));
-    return favs.includes(idNum);
+
+    try {
+        localStorage.setItem("oriza_favoritos", JSON.stringify(favs));
+    } catch (e) {
+        console.error("Error al guardar favoritos en localStorage:", e);
+    }
+
+    return esFavorito(idNum); // Devuelve true si quedó guardado, false si se quitó
 }
 
 // ============================================

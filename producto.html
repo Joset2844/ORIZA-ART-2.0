@@ -3,66 +3,46 @@
 
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
 
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
-
-  <title>Producto | ORIZA ART</title>
-  <meta name="description" content="Detalles, materiales y precio de esta pieza artesanal de ORIZA ART. Consulta disponibilidad por WhatsApp.">
-  
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/producto.css">
-  
+    <title>Producto | ORIZA ART</title>
+    <meta name="description" content="Detalles, materiales y precio de esta pieza artesanal de ORIZA ART. Consulta disponibilidad por WhatsApp.">
+    
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/producto.css">
 </head>
 
 <body>
 <div class="topbar">
-        <div class="topbar-track">
-
-            <span>
-                🚚 Envíos a todo el Perú • 💝 Diseños personalizados • ✨ Hecho a mano • 📿 Pulseras y collares artesanales • ❤️ Regalos únicos
-            </span>
-
-            <span>
-                🚚 Envíos a todo el Perú • 💝 Diseños personalizados • ✨ Hecho a mano • 📿 Pulseras y collares artesanales • ❤️ Regalos únicos
-            </span>
-
-        </div>
+    <div class="topbar-track">
+        <span>🚚 Envíos a todo el Perú • 💝 Diseños personalizados • ✨ Hecho a mano • 📿 Pulseras y collares artesanales • ❤️ Regalos únicos</span>
+        <span>🚚 Envíos a todo el Perú • 💝 Diseños personalizados • ✨ Hecho a mano • 📿 Pulseras y collares artesanales • ❤️ Regalos únicos</span>
     </div>
+</div>
     
 <header>
-
-<div class="logo">
-
-<h1>ORIZA ART</h1>
-
-<p>Hecho a mano con amor</p>
-
-</div>
-
-<nav>
-
-<a href="index.html">Inicio</a>
-
-<a href="catalogo.html">Colección</a>
-
-<a href="index.html#nosotros">Nosotros</a>
-
-<a href="index.html#contacto">Contacto</a>
-
-</nav>
-
+    <div class="logo">
+        <h1>ORIZA ART</h1>
+        <p>Hecho a mano con amor</p>
+    </div>
+    <nav>
+        <a href="index.html">Inicio</a>
+        <a href="catalogo.html">Colección</a>
+        <a href="index.html#nosotros">Nosotros</a>
+        <a href="index.html#contacto">Contacto</a>
+    </nav>
 </header>
 
 <main class="producto">
-
     <!-- GALERÍA DE IMÁGENES -->
     <div class="producto-galeria">
         <div class="producto-imagen-principal">
@@ -73,133 +53,79 @@
 
     <!-- INFORMACIÓN DEL PRODUCTO -->
     <div class="producto-info">
-
         <span id="categoriaProducto" class="categoria"></span>
-
         <h1 id="nombreProducto"></h1>
-
         <h2 id="precioProducto" class="precio-producto"></h2>
-
         <p id="descripcionProducto"></p>
-
         <div id="materialesProducto" class="materiales-producto"></div>
 
-        <div class="producto-info">
-
-        <span id="categoriaProducto" class="categoria"></span>
-
-        <h1 id="nombreProducto"></h1>
-
-        <div class="producto-meta-acciones">
-        <button id="btnFavProducto" class="btn-favorito-producto">
-            <span>🤍</span> <span id="txtFavProducto">Guardar en favoritos</span>
-        </button>
-        <button id="btnShareProducto" class="btn-compartir-producto">
-            <span>🔗</span> Compartir
-        </button>
-        </div>
-
-    <h2 id="precioProducto" class="precio-producto"></h2>
-    
-    <!-- Resto del contenido (descripción, materiales, botones de compra) -->
-
+        <!-- BOTONES DE ACCIÓN (TODOS JUNTOS DEBAJO DE LA DESCRIPCIÓN Y MATERIALES) -->
         <div class="producto-acciones">
-            <button id="btnAgregarCarrito" class="btn-producto">
-                🛒 Agregar al carrito
+            <button id="btnFavProducto" class="btn-favorito-producto">
+                <span>🤍</span><span id="txtFavProducto">Guardar en favoritos</span>
             </button>
-
-            <a id="btnWhatsapp" class="btn-producto btn-outline" href="#">
-                Consultar por WhatsApp
+            <button id="btnShareProducto" class="btn-compartir-producto">
+                <span>🔗</span><span>Compartir</span>
+            </button>
+            <button id="btnAgregarCarrito" class="btn-producto">
+                <span>🛒</span><span>Agregar al carrito</span>
+            </button>
+            <a id="btnWhatsapp" class="btn-producto btn-outline" href="#" target="_blank" rel="noopener">
+                <span>💬</span><span>Consultar por WhatsApp</span>
             </a>
         </div>
 
         <a class="btn-volver" href="catalogo.html">
             ← Volver al catálogo
         </a>
-
     </div>
 </main>
 
 <footer id="contacto">
-
     <h3>ORIZA ART</h3>
-
     <p>Hecho a mano con amor.</p>
-
     <div class="social-buttons">
-
-        <a href="https://wa.me/51936235607" target="_blank" rel="noopener">
-            💬 WhatsApp
-        </a>
-
-        <a href="https://www.instagram.com/oriza_art/" target="_blank" rel="noopener">
-            📷 Instagram
-        </a>
-
-        <a href="https://www.facebook.com/oriza.art/" target="_blank" rel="noopener">
-            👍 Facebook
-        </a>
-
+        <a href="https://wa.me/51936235607" target="_blank" rel="noopener">💬 WhatsApp</a>
+        <a href="https://www.instagram.com/oriza_art/" target="_blank" rel="noopener">📷 Instagram</a>
+        <a href="https://www.facebook.com/oriza.art/" target="_blank" rel="noopener">👍 Facebook</a>
     </div>
-
 </footer>
 
-<a href="#" id="whatsapp-float" aria-label="WhatsApp">
-    💬
-</a>
+<a href="#" id="whatsapp-float" aria-label="WhatsApp">💬</a>
 
 <button id="carrito-float" aria-label="Ver carrito de compras">
-    🛒
-    <span id="carrito-contador">0</span>
+    🛒 <span id="carrito-contador">0</span>
 </button>
 
 <div id="carrito-overlay"></div>
 
 <aside id="carrito-panel" aria-hidden="true">
-
     <div class="carrito-panel-header">
         <h3>🛒 Tu pedido</h3>
         <button id="carrito-cerrar" aria-label="Cerrar carrito">✕</button>
     </div>
-
     <div id="carrito-vista-lista" class="carrito-vista">
         <div id="carrito-lista" class="carrito-lista"></div>
     </div>
-
     <div id="carrito-vista-checkout" class="carrito-vista" hidden>
         <div id="carrito-checkout"></div>
     </div>
-
     <div class="carrito-panel-footer" id="footer-lista">
         <div class="carrito-total-row">
             <span>Total</span>
             <strong id="carrito-total">S/ 0.00</strong>
         </div>
-
-        <button id="carrito-continuar" class="btn-carrito-primario">
-            Continuar con mi pedido →
-        </button>
-
-        <button id="carrito-vaciar" class="carrito-vaciar-btn">
-            Vaciar carrito
-        </button>
+        <button id="carrito-continuar" class="btn-carrito-primario">Continuar con mi pedido →</button>
+        <button id="carrito-vaciar" class="carrito-vaciar-btn">Vaciar carrito</button>
     </div>
-
     <div class="carrito-panel-footer" id="footer-checkout" hidden>
         <div class="carrito-total-row">
             <span>Total</span>
             <strong id="carrito-total-2">S/ 0.00</strong>
         </div>
-
-        <button id="carrito-enviar" class="btn-carrito-primario">
-            Confirmar y enviar por WhatsApp
-        </button>
-
-        <button id="carrito-volver" class="carrito-vaciar-btn">
-            ← Volver al carrito
-        </button>
+        <button id="carrito-enviar" class="btn-carrito-primario">Confirmar y enviar por WhatsApp</button>
+        <button id="carrito-volver" class="carrito-vaciar-btn">← Volver al carrito</button>
     </div>
-
 </aside>
 
 <script src="js/config.js"></script>
@@ -207,7 +133,5 @@
 <script src="js/global.js"></script>
 <script src="js/carrito.js"></script>
 <script src="js/producto.js"></script>
-
 </body>
-
 </html>

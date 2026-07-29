@@ -3,14 +3,12 @@ let productosCache = null;
 async function obtenerProductos() {
     if (productosCache) return productosCache;
     
-    // 1. Revisa si ya están en la memoria de la sesión
     const cacheLocal = sessionStorage.getItem("oriza_productos_cache");
     if (cacheLocal) {
         productosCache = JSON.parse(cacheLocal);
         return productosCache;
     }
 
-    // 2. Si no están en caché, los consulta al servidor
     if (typeof cargarProductos === "function") {
         productosCache = await cargarProductos();
         if (productosCache && productosCache.length > 0) {
@@ -29,7 +27,7 @@ async function iniciarProducto() {
         const parametros = new URLSearchParams(window.location.search);
         const id = Number(parametros.get("id"));
 
-        const producto = productos.find(p => p.id === id);
+        const producto = productos.find(p => Number(p.id) === id);
 
         if (!producto) {
             document.title = "Producto no encontrado | ORIZA ART";
@@ -46,45 +44,36 @@ async function iniciarProducto() {
 
         document.title = `${producto.nombre} | ORIZA ART`;
 
-       // 1. Identificador del producto
-        // Garantizamos que tome el ID numérico o el código según como venga del Apps Script
-        const idCodigo = producto.id || producto.codigo;
+        // 1. Manejo seguro de imágenes
         let fotos = [];
-
         if (producto.imagen && producto.imagen.startsWith("http")) {
             fotos = producto.imagen.split(",").map(url => url.trim()).filter(Boolean);
         } else if (producto.imagen && !producto.imagen.includes("no-image")) {
-            // Si el objeto ya trae una ruta completa
-            const rutaLimpia = producto.imagen.replace(/\.webp$/i, "");
-            fotos.push(`${rutaLimpia}.webp`);
+            const nombreLimpio = producto.imagen.replace(/^img\//, '');
+            const baseNombre = nombreLimpio.replace(/\.webp$/i, "");
+            const storageBase = typeof SUPABASE_STORAGE_URL !== 'undefined' ? SUPABASE_STORAGE_URL : '';
+            fotos.push(`${storageBase}/${baseNombre}.webp`);
             for (let i = 2; i <= 5; i++) {
-                fotos.push(`${rutaLimpia}-${i}.webp`);
+                fotos.push(`${storageBase}/${baseNombre}-${i}.webp`);
             }
         } else {
-            // Convención por ID por defecto en carpeta img/
-            fotos.push(`img/${idCodigo}.webp`);
-            for (let i = 2; i <= 5; i++) {
-                fotos.push(`img/${idCodigo}-${i}.webp`);
-            }
+            fotos.push(typeof IMAGEN_DEFAULT_BUCKET !== 'undefined' ? IMAGEN_DEFAULT_BUCKET : '');
         }
 
-        console.log("📸 Rutas de imágenes que se intentarán cargar:", fotos);
-
-        // 2. Renderizado de Imagen Principal
+        // 2. Cargar imagen principal
         const imgPrincipal = document.getElementById("imgProducto");
         if (imgPrincipal) {
             imgPrincipal.src = fotos[0];
             imgPrincipal.alt = producto.nombre;
             imgPrincipal.onerror = () => {
-                imgPrincipal.src = "img/no-image.webp";
+                if (typeof IMAGEN_DEFAULT_BUCKET !== 'undefined') imgPrincipal.src = IMAGEN_DEFAULT_BUCKET;
             };
         }
 
-        // 3. Renderizado de Galería de Miniaturas (Directo)
+        // 3. Cargar Miniaturas
         const galeriaThumbs = document.getElementById("galeriaThumbs");
         if (galeriaThumbs) {
             galeriaThumbs.innerHTML = "";
-
             fotos.forEach((url, idx) => {
                 const thumb = document.createElement("div");
                 thumb.className = `thumb-item ${idx === 0 ? "activo" : ""}`;
@@ -92,19 +81,9 @@ async function iniciarProducto() {
                 const imgThumb = document.createElement("img");
                 imgThumb.src = url;
                 imgThumb.alt = `${producto.nombre} - vista ${idx + 1}`;
-
-                // Si la imagen existe, la mantiene. Si da error 404 (no existe), borra esa miniatura.
-                imgThumb.onerror = () => {
-                    console.warn(`⚠️ No se encontró la imagen variante: ${url}`);
-                    thumb.remove();
-                };
-
-                imgThumb.onload = () => {
-                    console.log(`✅ Imagen cargada con éxito: ${url}`);
-                };
-
+                imgThumb.onerror = () => thumb.remove();
+                
                 thumb.appendChild(imgThumb);
-
                 thumb.addEventListener("click", () => {
                     if (imgPrincipal) {
                         imgPrincipal.style.opacity = "0.3";
@@ -113,7 +92,6 @@ async function iniciarProducto() {
                             imgPrincipal.style.opacity = "1";
                         }, 150);
                     }
-
                     document.querySelectorAll(".thumb-item").forEach(t => t.classList.remove("activo"));
                     thumb.classList.add("activo");
                 });
@@ -122,7 +100,7 @@ async function iniciarProducto() {
             });
         }
 
-        // 4. Cargar Datos del Producto
+        // 4. Rellenar Información
         const nombre = document.getElementById("nombreProducto");
         if (nombre) nombre.textContent = producto.nombre;
 
@@ -133,63 +111,65 @@ async function iniciarProducto() {
         if (desc) desc.textContent = producto.descripcion || "";
 
         const mat = document.getElementById("materialesProducto");
-        if (mat && producto.materiales) {
-            mat.innerHTML = `<strong>Materiales:</strong> ${Array.isArray(producto.materiales) ? producto.materiales.join(", ") : producto.materiales}`;
+        if (mat) {
+            if (producto.materiales) {
+                mat.innerHTML = `<strong>Materiales:</strong> ${Array.isArray(producto.materiales) ? producto.materiales.join(", ") : producto.materiales}`;
+            } else {
+                mat.innerHTML = "";
+            }
         }
 
         const cat = document.getElementById("categoriaProducto");
         if (cat) cat.textContent = producto.categoria || "";
 
-        const mainProducto = document.querySelector(".producto");
-        if (mainProducto) {
-            requestAnimationFrame(() => {
-                mainProducto.classList.add("cargado");
-            });
-        }
-
-        // Dentro de iniciarProducto(), justo después de rellenar los datos del producto:
-
-        // 7. Configurar Favorito en Ficha Producto
+        // 5. Configurar Favorito (Vinculado a global.js)
         const btnFavProducto = document.getElementById("btnFavProducto");
         const txtFavProducto = document.getElementById("txtFavProducto");
 
         if (btnFavProducto) {
-            let esFav = esFavorito(producto.id);
-            actualizarBotonFav(esFav);
+            let esFav = typeof esFavorito === "function" ? esFavorito(producto.id) : false;
 
-            btnFavProducto.addEventListener("click", () => {
-                esFav = toggleFavorito(producto.id);
-                actualizarBotonFav(esFav);
+            const actualizarFavUI = (activo) => {
+                btnFavProducto.classList.toggle("activo", activo);
+                const iconoSpan = btnFavProducto.querySelector("span");
+                if (iconoSpan) iconoSpan.textContent = activo ? "❤️" : "🤍";
+                if (txtFavProducto) txtFavProducto.textContent = activo ? "Guardado en favoritos" : "Guardar en favoritos";
+            };
+
+            actualizarFavUI(esFav);
+
+            btnFavProducto.addEventListener("click", (e) => {
+                e.preventDefault();
+                if (typeof toggleFavorito === "function") {
+                    esFav = toggleFavorito(producto.id);
+                    actualizarFavUI(esFav);
+                } else {
+                    console.error("❌ toggleFavorito() no está disponible en global.js");
+                }
             });
         }
 
-        function actualizarBotonFav(activo) {
-            if (!btnFavProducto) return;
-            btnFavProducto.classList.toggle("activo", activo);
-            btnFavProducto.querySelector("span").textContent = activo ? "❤️" : "🤍";
-            if (txtFavProducto) {
-                txtFavProducto.textContent = activo ? "Guardado en favoritos" : "Guardar en favoritos";
-            }
-        }
-
-        // 8. Configurar Compartir en Ficha Producto
+        // 6. Configurar Compartir
         const btnShareProducto = document.getElementById("btnShareProducto");
         if (btnShareProducto) {
-            btnShareProducto.addEventListener("click", () => {
-                compartirProducto(producto.nombre, producto.descripcion);
+            btnShareProducto.addEventListener("click", (e) => {
+                e.preventDefault();
+                const urlActual = window.location.href;
+                if (typeof compartirProducto === "function") {
+                    compartirProducto(producto.nombre, producto.descripcion, urlActual);
+                }
             });
         }
 
-        // 5. Configurar Botón WhatsApp
+        // 7. Configurar WhatsApp
         const btnWhatsapp = document.getElementById("btnWhatsapp");
         if (btnWhatsapp) {
-            const numeroWA = (typeof CONFIG !== "undefined" && CONFIG.whatsapp) ? CONFIG.whatsapp : "";
-            btnWhatsapp.href = `https://wa.me/${numeroWA}?text=${encodeURIComponent(
-                `Hola, me interesa ${producto.nombre}.`
-            )}`;
+            const numeroWA = (typeof CONFIG !== "undefined" && CONFIG.whatsapp) ? CONFIG.whatsapp : "51936235607";
+            const textoMensaje = `Hola ORIZA ART, me interesa consultar sobre: ${producto.nombre}`;
+            btnWhatsapp.href = `https://wa.me/${numeroWA}?text=${encodeURIComponent(textoMensaje)}`;
         }
 
-        // 6. Configurar Botón Agregar al Carrito
+        // 8. Configurar Carrito
         const btnCarrito = document.getElementById("btnAgregarCarrito");
         if (btnCarrito) {
             if (producto.agotado) {
@@ -197,26 +177,24 @@ async function iniciarProducto() {
                 btnCarrito.textContent = "Agotado";
                 btnCarrito.classList.add("agotado");
             } else {
-                btnCarrito.addEventListener("click", () => {
+                btnCarrito.addEventListener("click", (e) => {
+                    e.preventDefault();
                     if (typeof agregarProducto === "function") {
-                        agregarProducto({
-                            ...producto,
-                            imagen: fotos[0]
-                        });
+                        agregarProducto({ ...producto, imagen: fotos[0] });
+                    } else if (typeof agregarAlCarrito === "function") {
+                        agregarAlCarrito({ ...producto, imagen: fotos[0] });
                     }
                 });
-
-                if (producto.stock && producto.stock <= 3) {
-                    const aviso = document.createElement("p");
-                    aviso.className = "aviso-stock";
-                    aviso.textContent = `¡Solo quedan ${producto.stock} unidades!`;
-                    btnCarrito.insertAdjacentElement("afterend", aviso);
-                }
             }
         }
 
+        const mainProducto = document.querySelector(".producto");
+        if (mainProducto) {
+            requestAnimationFrame(() => mainProducto.classList.add("cargado"));
+        }
+
     } catch (error) {
-        console.error("❌ Error al cargar producto:", error);
+        console.error("❌ Error al iniciar producto:", error);
     }
 }
 

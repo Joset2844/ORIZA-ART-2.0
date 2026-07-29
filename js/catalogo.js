@@ -2,46 +2,35 @@
   CATÁLOGO DINÁMICO E INTERACTIVO
 =========================*/
 
-const contenedor = document.getElementById("lista-productos");
-const buscador = document.getElementById("buscarProducto");
-const selectOrden = document.getElementById("selectOrden");
-const btnVistaGrid = document.getElementById("btnVistaGrid");
-const btnVistaList = document.getElementById("btnVistaList");
-
 let productos = [];
 let categoriaActual = "todos";
 
-// Reemplaza tus funciones mostrarProductos e iniciarCatalogo por estas:
-
-let productosCache = null;
-
-async function obtenerProductosConCache() {
-    const cacheLocal = sessionStorage.getItem("oriza_productos_cache");
-    if (cacheLocal) {
-        return JSON.parse(cacheLocal);
-    }
-    const productosServidor = await cargarProductos();
-    if (productosServidor && productosServidor.length > 0) {
-        sessionStorage.setItem("oriza_productos_cache", JSON.stringify(productosServidor));
-    }
-    return productosServidor;
-}
-
 function mostrarProductos(categoria = "todos", texto = "") {
+    const contenedor = document.getElementById("lista-productos");
+    const selectOrden = document.getElementById("selectOrden");
+
+    if (!contenedor) return;
+
+    // Filtrar productos
     let filtrados = productos.filter(producto => {
         let coincideCategoria = false;
-        
-        if (categoria === "favoritos") {
-            coincideCategoria = esFavorito(producto.id);
+        const catProd = (producto.categoria || "").toLowerCase().trim();
+        const catFiltro = categoria.toLowerCase().trim();
+
+        if (catFiltro === "favoritos") {
+            coincideCategoria = typeof esFavorito === "function" ? esFavorito(producto.id) : false;
+        } else if (catFiltro === "todos") {
+            coincideCategoria = true;
         } else {
-            coincideCategoria = categoria === "todos" || producto.categoria.toLowerCase() === categoria;
+            coincideCategoria = catProd.includes(catFiltro) || catFiltro.includes(catProd);
         }
 
-        const coincideTexto = producto.nombre.toLowerCase().includes(texto.toLowerCase());
+        const coincideTexto = (producto.nombre || "").toLowerCase().includes((texto || "").toLowerCase());
         return coincideCategoria && coincideTexto;
     });
 
-    const criterioOrden = selectOrden.value;
+    // Ordenar productos (Validación segura de selectOrden)
+    const criterioOrden = selectOrden ? selectOrden.value : "relevantes";
     filtrados.sort((a, b) => {
         if (criterioOrden === "precio-asc") return a.precio - b.precio;
         if (criterioOrden === "precio-desc") return b.precio - a.precio;
@@ -50,10 +39,11 @@ function mostrarProductos(categoria = "todos", texto = "") {
         return a.id - b.id;
     });
 
+    // Construir HTML de las tarjetas
     const fragment = document.createDocumentFragment();
 
     filtrados.forEach(producto => {
-        const esFav = esFavorito(producto.id);
+        const esFav = typeof esFavorito === "function" ? esFavorito(producto.id) : false;
         const article = document.createElement("article");
         article.className = "card-producto" + (producto.agotado ? " agotado" : "");
         article.innerHTML = `
@@ -70,7 +60,7 @@ function mostrarProductos(categoria = "todos", texto = "") {
                     alt="${producto.nombre}" 
                     loading="lazy"
                     decoding="async"
-                    onerror="this.onerror=null; this.src='img/no-image.webp';"
+                    onerror="this.onerror=null; this.src='${typeof IMAGEN_DEFAULT_BUCKET !== 'undefined' ? IMAGEN_DEFAULT_BUCKET : ''}';"
                 >
                 ${producto.agotado
                     ? '<span class="badge-agotado">Agotado</span>'
@@ -80,7 +70,7 @@ function mostrarProductos(categoria = "todos", texto = "") {
                 <span class="categoria">${producto.categoria}</span>
                 <h3>${producto.nombre}</h3>
                 <p>${producto.descripcion}</p>
-                <span class="card-precio">S/ ${producto.precio.toFixed(2)}</span>
+                <span class="card-precio">S/ ${Number(producto.precio).toFixed(2)}</span>
                 <div class="card-acciones">
                     <a href="producto.html?id=${producto.id}" class="btn-producto">
                         Ver detalles
@@ -113,10 +103,11 @@ function mostrarProductos(categoria = "todos", texto = "") {
     });
 
     contenedor.innerHTML = "";
-    if (filtrados.length === 0 && categoria === "favoritos") {
+
+    if (filtrados.length === 0) {
         contenedor.innerHTML = `
             <div style="text-align:center; grid-column: 1/-1; padding: 40px 20px;">
-                <p>Aún no has guardado productos favoritos. ❤️</p>
+                <p>${categoria === "favoritos" ? "Aún no has guardado productos favoritos. ❤️" : "No se encontraron productos."}</p>
             </div>
         `;
     } else {
@@ -128,73 +119,84 @@ function mostrarProductos(categoria = "todos", texto = "") {
     });
 }
 
-// Escuchadores de eventos para Favoritos y Compartir en el Catálogo
-contenedor.addEventListener("click", (e) => {
-    // Favorito
-    const btnFav = e.target.closest(".btn-favorito-card");
-    if (btnFav) {
-        const id = btnFav.dataset.id;
-        const ahoraEsFav = toggleFavorito(id);
-        btnFav.classList.toggle("activo", ahoraEsFav);
-        btnFav.innerHTML = ahoraEsFav ? '❤️' : '🤍';
-        btnFav.title = ahoraEsFav ? 'Quitar de favoritos' : 'Agregar a favoritos';
-        
-        // Si estamos viendo la pestaña de favoritos, refrescamos la lista
-        if (categoriaActual === "favoritos") {
-            mostrarProductos(categoriaActual, buscador.value);
-        }
-        return;
-    }
-
-    // Compartir
-    const btnShare = e.target.closest(".btn-compartir-card");
-    if (btnShare) {
-        const nombre = btnShare.dataset.nombre;
-        const desc = btnShare.dataset.desc;
-        const id = btnShare.dataset.id;
-        const url = `${window.location.origin}/producto.html?id=${id}`;
-        compartirProducto(nombre, desc, url);
-    }
-});
-
-// Inicialización optimizada
+// Carga Inicial del Catálogo
 async function iniciarCatalogo() {
-    productos = await obtenerProductosConCache();
-    mostrarProductos();
+    sessionStorage.removeItem("oriza_productos_cache");
+    if (typeof cargarProductos === "function") {
+        productos = await cargarProductos();
+        console.log("Productos cargados:", productos); // Para verificar en la consola de F12
+    }
+    const buscador = document.getElementById("buscarProducto");
+    mostrarProductos(categoriaActual, buscador ? buscador.value : "");
 }
 
-iniciarCatalogo();
+// Asignación segura de eventos tras cargar el DOM
+document.addEventListener("DOMContentLoaded", () => {
+    iniciarCatalogo();
 
-iniciarCatalogo();
+    const contenedor = document.getElementById("lista-productos");
+    const buscador = document.getElementById("buscarProducto");
+    const selectOrden = document.getElementById("selectOrden");
+    const btnVistaGrid = document.getElementById("btnVistaGrid");
+    const btnVistaList = document.getElementById("btnVistaList");
 
-// Eventos de Filtro y Buscador
-document.querySelectorAll(".filtro").forEach(boton => {
-    boton.addEventListener("click", () => {
-        categoriaActual = boton.dataset.categoria;
-        document.querySelector(".filtro.activo")?.classList.remove("activo");
-        boton.classList.add("activo");
-        mostrarProductos(categoriaActual, buscador.value);
+    if (contenedor) {
+    contenedor.addEventListener("click", (e) => {
+        const btnFav = e.target.closest(".btn-favorito-card");
+        if (btnFav) {
+            e.stopPropagation();
+            const id = btnFav.dataset.id;
+            
+            // Alternar en LocalStorage
+            const ahoraEsFav = toggleFavorito(id);
+            
+            // Actualizar interfaz visual
+            btnFav.classList.toggle("activo", ahoraEsFav);
+            btnFav.innerHTML = ahoraEsFav ? '❤️' : '🤍';
+            btnFav.title = ahoraEsFav ? 'Quitar de favoritos' : 'Agregar a favoritos';
+
+            // Si el usuario está parado en la pestaña "Mis Favoritos", refrescar lista
+            if (typeof categoriaActual !== "undefined" && categoriaActual === "favoritos") {
+                const buscador = document.getElementById("buscarProducto");
+                mostrarProductos("favoritos", buscador ? buscador.value : "");
+            }
+        }
     });
-});
+}
 
-buscador.addEventListener("input", () => {
-    mostrarProductos(categoriaActual, buscador.value);
-});
+    // Filtros por Categoría
+    document.querySelectorAll(".filtro").forEach(boton => {
+        boton.addEventListener("click", () => {
+            categoriaActual = boton.dataset.categoria;
+            document.querySelector(".filtro.activo")?.classList.remove("activo");
+            boton.classList.add("activo");
+            mostrarProductos(categoriaActual, buscador ? buscador.value : "");
+        });
+    });
 
-// Evento de Ordenamiento
-selectOrden.addEventListener("change", () => {
-    mostrarProductos(categoriaActual, buscador.value);
-});
+    if (buscador) {
+        buscador.addEventListener("input", () => {
+            mostrarProductos(categoriaActual, buscador.value);
+        });
+    }
 
-// Cambios de Vista (Cuadrícula / Lista)
-btnVistaGrid.addEventListener("click", () => {
-    contenedor.classList.remove("vista-lista");
-    btnVistaGrid.classList.add("activo");
-    btnVistaList.classList.remove("activo");
-});
+    if (selectOrden) {
+        selectOrden.addEventListener("change", () => {
+            mostrarProductos(categoriaActual, buscador ? buscador.value : "");
+        });
+    }
 
-btnVistaList.addEventListener("click", () => {
-    contenedor.classList.add("vista-lista");
-    btnVistaList.classList.add("activo");
-    btnVistaGrid.classList.remove("activo");
+    if (btnVistaGrid && btnVistaList && contenedor) {
+        btnVistaGrid.addEventListener("click", () => {
+            contenedor.classList.remove("vista-lista");
+            btnVistaGrid.classList.add("activo");
+            btnVistaList.classList.remove("activo");
+        });
+
+        btnVistaList.addEventListener("click", () => {
+            contenedor.classList.add("vista-lista");
+            btnVistaList.classList.add("activo");
+            btnVistaGrid.classList.remove("activo");
+        });
+    }
 });

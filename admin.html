@@ -5,7 +5,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-
+<!-- CDN de Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -16,12 +17,17 @@
 
 </head>
 <body>
-
 <div id="login-vista" class="login-vista">
     <form id="login-form" class="login-form">
         <h1>ORIZA ART</h1>
         <p>Panel de administración</p>
-        <input type="password" id="login-password" placeholder="Contraseña" required autofocus>
+        
+        <!-- Campo para Usuario -->
+        <input type="text" id="login-user" placeholder="Usuario" required autofocus>
+        
+        <!-- Campo para Contraseña -->
+        <input type="password" id="login-password" placeholder="Contraseña" required>
+        
         <button type="submit">Entrar</button>
         <p id="login-error" class="login-error" hidden></p>
     </form>
@@ -107,7 +113,7 @@
 
             <label>
                 <span>ID (único, ej. ES-PU-003)</span>
-                <input type="text" id="f-id" required>
+                <input type="text" id="f-id" style="text-transform: uppercase;" required>
             </label>
 
             <label>
@@ -138,11 +144,17 @@
                 <textarea id="f-descripcion" rows="3"></textarea>
             </label>
 
-            <label>
-                <span>Imagen (URL, opcional)</span>
-                <input type="text" id="f-imagen" placeholder="https://...">
-                <small>Sube tu foto a imgbb.com o Drive y pega el link. Vacío = usa la imagen ya existente según el ID.</small>
-            </label>
+            
+                <div class="form-group">
+                    <label for="f-imagen-file">Imágenes del producto (múltiples):</label>
+                    
+                    <!-- Se agrega el atributo 'multiple' -->
+                    <input type="file" id="f-imagen-file" accept="image/*" multiple class="input-file">
+                    
+                    <!-- Campo de texto para conservar URLs si fuera necesario -->
+                    <input type="text" id="f-imagen" placeholder="URL principal o separadas por coma" style="margin-top: 8px;">
+                </div>
+            
 
             <label>
                 <span>Estado</span>
@@ -179,7 +191,7 @@
 <div class="preview-card">
 
     <div class="preview-imagen">
-        <img id="preview-img" src="img/no-image.webp" alt="">
+        <img id="preview-img" src="https://ltzfnsrxkkyuupwyykem.supabase.co/storage/v1/object/public/productos/no-image.webp" alt="">
         <span id="preview-tipo" class="preview-badge">PULSERA</span>
         <span id="preview-destacado" class="preview-star" hidden>⭐ Destacado</span>
     </div>
@@ -221,6 +233,23 @@
 
 <div id="toast"></div>
 
+<!-- CDN de Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Cargar archivo de configuración (si existe) -->
+<script src="js/config.js"></script>
+
+<script>
+  // Al usar window.supabaseClient evitamos declarar 'const' dos veces
+  const SUPABASE_URL = "https://ltzfnsrxkkyuupwyykem.supabase.co"; // Tu URL de Supabase
+  const SUPABASE_KEY = "sb_publishable_u-VnItuSvVJ8UiyyFtMlLQ_kSqVYKdp";              // Tu Anon Key de Supabase
+
+  if (typeof supabaseClient === "undefined") {
+      window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+</script>
+
+<!-- Cargar admin.js SOLO UNA VEZ al final del body -->
 <script src="js/admin.js"></script>
 </body>
 </html>

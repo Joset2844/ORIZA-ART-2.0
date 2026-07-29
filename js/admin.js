@@ -1,206 +1,96 @@
 // ============================================
-// PANEL DE ADMINISTRACIÓN — ORIZA ART
+// PANEL DE ADMINISTRACIÓN COMPLETO — ORIZA ART
 // ============================================
-
-// Pega aquí tu URL de Apps Script (ver ADMIN_SETUP.md)
-const ADMIN_API_URL = "https://script.google.com/macros/s/AKfycbyZCsQuykEiyuyS-85W0y4wV4ANszeSaPfo0I00lWC9YiZLrXJ6j_Y_lpS93al3GliBig/exec";
 
 const SESSION_KEY = "orizaAdminPass";
 
-let productosAdmin = [];
-let productosFiltrados = [];
+window.productosAdmin = window.productosAdmin || [];
+window.productosFiltrados = window.productosFiltrados || [];
+window.dbSchema = null; // Guardará los nombres exactos de tus columnas
 let editandoId = null;
+let ordenActual = { columna: null, ascendente: true };
 
-function getPassword() {
-    return sessionStorage.getItem(SESSION_KEY) || "";
-}
-
-async function llamarApi(params) {
-
-    if (!ADMIN_API_URL || ADMIN_API_URL.includes("PEGA_AQUI")) {
-        throw new Error("No configuraste ADMIN_API_URL en js/admin.js con la URL de tu Apps Script.");
-    }
-
-    const query = new URLSearchParams({ ...params, password: getPassword() }).toString();
-    const res = await fetch(`${ADMIN_API_URL}?${query}`);
-
-    if (!res.ok) {
-        throw new Error(`El servidor respondió con estado ${res.status}`);
-    }
-
-    const texto = await res.text();
-
-    try {
-        return JSON.parse(texto);
-    } catch (e) {
-        console.error("Respuesta no era JSON:", texto);
-        throw new Error("El backend no devolvió JSON válido (revisa que Apps Script esté bien desplegado).");
-    }
-
-}
-
-async function iniciarSesion(password) {
-
-    sessionStorage.setItem(SESSION_KEY, password);
-
-    const boton = document.querySelector("#login-form button");
-    const input = document.getElementById("login-password");
-
-    if (boton) {
-    boton.disabled = true;
-    boton.textContent = "Ingresando...";
-    }
-
-    if (input) {
-    input.disabled = true;
-    }
-
-    let data;
-    document.getElementById("login-vista").hidden = true;
-    document.getElementById("loader-vista").hidden = false;
-
-    try {
-        data = await llamarApi({ action: "listar" });
-    } catch (error) {
-
-    if (boton) {
-        boton.disabled = false;
-        boton.textContent = "Entrar";
-    }
-
-    if (input) {
-        input.disabled = false;
-    }
-
-    mostrarErrorLogin("No se pudo conectar: " + error.message);
-
-    return false;
-    }  
-
-    if (data.error) {
-
-    sessionStorage.removeItem(SESSION_KEY);
-
-    if (boton) {
-        boton.disabled = false;
-        boton.textContent = "Entrar";
-    }
-
-    if (input) {
-        input.disabled = false;
-        input.focus();
-    }
-
-    mostrarErrorLogin(
-        data.error === "Clave incorrecta"
-            ? "Contraseña incorrecta."
-            : data.error
-    );
-
-    return false;
-}
-
-    productosAdmin = data.productos;
-    mostrarPanel();
-    renderizarTabla();
-    return true;
-}
-
-function mostrarToast(mensaje, tipo = "info") {
-
-    const toast = document.getElementById("toast");
-    if (!toast) return;
-
-    toast.className = "";
-    toast.id = "toast";
-
-    toast.textContent = mensaje;
-
-    toast.classList.add(tipo);
-    toast.classList.add("mostrar");
-
-    clearTimeout(toast.timer);
-
-    toast.timer = setTimeout(() => {
-        toast.classList.remove("mostrar");
-    }, 3000);
-
-}
-
+// Mensajes de error
 function mostrarErrorLogin(msg) {
     const el = document.getElementById("login-error");
-    if (el) {
-        el.textContent = msg;
-        el.hidden = false;
-    }
+    if (el) { el.textContent = msg; el.hidden = false; }
 }
 
 function mostrarPanel() {
-
     document.getElementById("loader-vista").hidden = true;
     document.getElementById("login-vista").hidden = true;
     document.getElementById("panel-vista").hidden = false;
-
 }
 
-function cerrarSesion() {
-    sessionStorage.removeItem(SESSION_KEY);
-    location.reload();
+// Cargar productos desde Supabase y detectar esquema (columnas exactas)
+async function recargarProductos() {
+    if (typeof supabaseClient === "undefined") {
+        console.error("supabaseClient no está inicializado.");
+        return;
+    }
+
+    try {
+        const { data, error } = await supabaseClient.from('productos').select('*');
+
+        if (error) {
+            mostrarToast("Error al cargar productos: " + error.message, "error");
+            return;
+        }
+
+        // Detectar exactamente cómo se llaman las columnas en tu base de datos 
+        if (data && data.length > 0 && !window.dbSchema) {
+            const row = data[0];
+            window.dbSchema = {
+                id: 'codigo' in row ? 'codigo' : ('ID' in row ? 'ID' : ('id_codigo' in row ? 'id_codigo' : 'id')),
+                nombre: 'NOMBRE' in row ? 'NOMBRE' : 'nombre',
+                tipo: 'TIPO' in row ? 'TIPO' : 'tipo',
+                precio: 'PRECIO' in row ? 'PRECIO' : 'precio',
+                stock: 'STOCK' in row ? 'STOCK' : 'stock',
+                estado: 'ESTADO' in row ? 'ESTADO' : 'estado',
+                destacado: 'DESTACADO' in row ? 'DESTACADO' : 'destacado',
+                material: 'MATERIAL' in row ? 'MATERIAL' : 'material',
+                descripcion: 'DESCRIPCION ESPIRITUAL' in row ? 'DESCRIPCION ESPIRITUAL' : 'descripcion',
+                imagen: 'VACIO' in row ? 'VACIO' : 'imagen',
+                orden: 'ORDEN' in row ? 'ORDEN' : 'orden'
+            };
+        }
+
+        window.productosAdmin = (data || []).map(r => ({
+            id: r[window.dbSchema.id]?.toString() || "",
+            nombre: r[window.dbSchema.nombre]?.toString() || "",
+            tipo: r[window.dbSchema.tipo]?.toString() || "PULSERA",
+            precio: Number(r[window.dbSchema.precio] ?? 0),
+            stock: Number(r[window.dbSchema.stock] ?? 0),
+            estado: r[window.dbSchema.estado]?.toString() || "ACTIVO",
+            destacado: r[window.dbSchema.destacado]?.toString() || "NO",
+            material: r[window.dbSchema.material]?.toString() || "",
+            descripcion: r[window.dbSchema.descripcion]?.toString() || "",
+            imagen: r[window.dbSchema.imagen]?.toString() || "",
+            orden: Number(r[window.dbSchema.orden] ?? 999)
+        }));
+
+        window.productosFiltrados = [...window.productosAdmin];
+        aplicarFiltros(false); // Refresca aplicando filtros y orden actuales
+    } catch (e) {
+        console.error("Excepción en recargarProductos:", e);
+    }
 }
 
-function aplicarFiltros(){
-
-    const texto =
-        document.getElementById("buscar-producto")
-        .value
-        .trim()
-        .toLowerCase();
-
-    const tipo =
-        document.getElementById("filtro-tipo").value;
-
-    const estado =
-        document.getElementById("filtro-estado").value;
-
-    productosFiltrados = productosAdmin.filter(p=>{
-
-        const coincideTexto =
-
-            p.nombre.toLowerCase().includes(texto) ||
-
-            p.id.toLowerCase().includes(texto);
-
-        const coincideTipo =
-
-            !tipo || p.tipo === tipo;
-
-        const coincideEstado =
-
-            !estado || p.estado === estado;
-
-        return coincideTexto && coincideTipo && coincideEstado;
-
-    });
-
-    renderizarTabla();
-
-}
-
+// Renderizar tabla
+// Renderizar tabla
 function renderizarTabla() {
     const tbody = document.getElementById("tabla-productos");
     if (!tbody) return;
 
-    tbody.innerHTML = (productosFiltrados.length ? productosFiltrados : productosAdmin).map(p => {
-        const activo = (p.estado || "").toString().toLowerCase() === "activo";
+    tbody.innerHTML = window.productosFiltrados.map(p => {
+        const activo = (p.estado || "").toLowerCase() === "activo";
         
-        // CORRECCIÓN: Ruta de imagen alineada con la convención local del sitio
-        let fotoTabla = "img/no-image.webp";
+        // Asignación de foto apuntando al Bucket
+        let fotoTabla = IMAGEN_DEFAULT_BUCKET;
         if (p.imagen && p.imagen.startsWith("http")) {
             fotoTabla = p.imagen.split(",")[0].trim();
-        } else if (p.imagen && !p.imagen.includes("no-image")) {
-            fotoTabla = p.imagen;
         } else if (p.id) {
-            fotoTabla = `img/${p.id}.webp`;
+            fotoTabla = `${SUPABASE_STORAGE_URL}/${p.id}.webp`;
         }
 
         return `
@@ -208,7 +98,7 @@ function renderizarTabla() {
                 <td>${p.id}</td>
                 <td>
                     <div class="producto-admin">
-                        <img src="${fotoTabla}" loading="lazy" onerror="this.src='img/no-image.webp'">
+                        <img src="${fotoTabla}" loading="lazy" onerror="this.onerror=null; this.src='${IMAGEN_DEFAULT_BUCKET}';">
                         <div>
                             <strong>${p.nombre}</strong>
                             <small>${p.id}</small>
@@ -216,15 +106,10 @@ function renderizarTabla() {
                     </div>
                 </td>
                 <td>${p.tipo}</td>
-                <td>S/ ${Number(p.precio || 0).toFixed(2)}</td>
+                <td>S/ ${Number(p.precio).toFixed(2)}</td>
                 <td>
                     <div class="stock-box">
-                    <input type="number" min="0" class="input-stock" data-id="${p.id}" value="${p.stock ?? 0}">
-                        <div class="barra-stock">
-                            <div class="barra-stock-fill ${Number(p.stock)<=3?'rojo':Number(p.stock)<=10?'amarillo':'verde'}"
-                            style="width:${Math.min(Number(p.stock)*5,100)}%">
-                            </div>
-                        </div>
+                        <input type="number" min="0" class="input-stock" data-id="${p.id}" value="${p.stock}">
                     </div>
                 </td>
                 <td>
@@ -233,377 +118,476 @@ function renderizarTabla() {
                     </button>
                 </td>
                 <td class="acciones-tabla">
-                    <button data-accion="editar" data-id="${p.id}" aria-label="Editar">✎</button>
-                    <button data-accion="eliminar" data-id="${p.id}" aria-label="Eliminar">🗑</button>
+                    <button data-accion="editar" data-id="${p.id}" title="Editar">✎</button>
+                    <button data-accion="eliminar" data-id="${p.id}" title="Eliminar" style="color:red;">🗑</button>
                 </td>
             </tr>
         `;
-    }).join("") || `<tr><td colspan="7" class="tabla-vacia">Aún no hay productos.</td></tr>`;
+    }).join("") || `<tr><td colspan="7" class="tabla-vacia">No hay productos registrados.</td></tr>`;
 }
 
-function actualizarPreview() {
-    const nombre = document.getElementById("f-nombre").value.trim();
-    const precio = Number(document.getElementById("f-precio").value || 0);
-    const material = document.getElementById("f-material").value.trim();
-    const descripcion = document.getElementById("f-descripcion").value.trim();
-    const imagen = document.getElementById("f-imagen").value.trim();
-    const id = document.getElementById("f-id").value.trim();
-    const tipo = document.getElementById("f-tipo").value;
-    const destacado = document.getElementById("f-destacado").value;
-    const stock = Number(document.getElementById("f-stock").value || 0);
-
-    // Actualización de textos de la vista previa
-    document.getElementById("preview-tipo").textContent = tipo || "TIPO";
-    document.getElementById("preview-nombre").textContent = nombre || "Nombre del producto";
-    document.getElementById("preview-precio").textContent = "S/ " + precio.toFixed(2);
-    document.getElementById("preview-material").textContent = material ? `Materiales: ${material}` : "Materiales no especificados";
-    document.getElementById("preview-descripcion").textContent = descripcion || "Sin descripción disponible...";
-
-    // Badge de destacado
-    const starBadge = document.getElementById("preview-destacado");
-    if (starBadge) {
-        starBadge.hidden = destacado !== "SI";
+// ------------------------------------------------------------------
+// NUEVO: SISTEMA DE ORDENAMIENTO DE COLUMNAS (ASC/DESC)
+// ------------------------------------------------------------------
+function ordenarDatos(colIndex, tipo) {
+    if (ordenActual.columna === colIndex) {
+        ordenActual.ascendente = !ordenActual.ascendente; // Alternar asc/desc
+    } else {
+        ordenActual.columna = colIndex;
+        ordenActual.ascendente = true;
     }
 
-    // Badge de stock
-    const stockBadge = document.getElementById("preview-stock");
-    if (stockBadge) {
-        if (stock <= 0) {
-            stockBadge.textContent = "Agotado";
-            stockBadge.className = "preview-stock agotado";
-        } else if (stock <= 3) {
-            stockBadge.textContent = `¡Últimas ${stock} unidades!`;
-            stockBadge.className = "preview-stock agotado";
-        } else {
-            stockBadge.textContent = "Disponible";
-            stockBadge.className = "preview-stock disponible";
-        }
-    }
-
-    // LÓGICA DE DETECCIÓN DE IMAGEN LOCAL O EXTERNA
-    const img = document.getElementById("preview-img");
-    let nuevaImagen = "img/no-image.webp";
-
-    if (imagen.startsWith("http")) {
-        // Toma la primera URL si el usuario colocó enlaces separados por coma
-        nuevaImagen = imagen.split(",")[0].trim();
-    } else if (imagen !== "") {
-        nuevaImagen = imagen;
-    } else if (id !== "") {
-        // Busca en la carpeta raíz 'img/[ID].webp'
-        nuevaImagen = `img/${id}.webp`;
-    }
-
-    if (img.src !== nuevaImagen) {
-        img.src = nuevaImagen;
-    }
-
-    img.onerror = () => {
-        if (!img.src.includes("no-image.webp")) {
-            img.src = "img/no-image.webp";
-        }
+    const mapaColumnas = {
+        0: "id",
+        1: "nombre",
+        2: "tipo",
+        3: "precio",
+        4: "stock",
+        5: "estado"
     };
+    const prop = mapaColumnas[colIndex];
+    if (!prop) return;
+
+    window.productosFiltrados.sort((a, b) => {
+        let valA = a[prop];
+        let valB = b[prop];
+
+        if (tipo === "num" || tipo === "precio") {
+            valA = Number(valA) || 0;
+            valB = Number(valB) || 0;
+            return ordenActual.ascendente ? valA - valB : valB - valA;
+        } else {
+            valA = valA.toString().toLowerCase();
+            valB = valB.toString().toLowerCase();
+            if (valA < valB) return ordenActual.ascendente ? -1 : 1;
+            if (valA > valB) return ordenActual.ascendente ? 1 : -1;
+            return 0;
+        }
+    });
+
+    //   iconos de cabecera
+    document.querySelectorAll("th[data-col]").forEach(th => {
+        const icon = th.querySelector(".sort-icon");
+        if (icon) icon.textContent = "↕";
+    });
+    const activeTh = document.querySelector(`th[data-col="${colIndex}"]`);
+    if (activeTh) {
+        const icon = activeTh.querySelector(".sort-icon");
+        if (icon) icon.textContent = ordenActual.ascendente ? "↑" : "↓";
+    }
+
+    renderizarTabla();
 }
 
-function abrirFormulario(producto) {
+function aplicarFiltros(resetearOrden = true) {
+    const texto = (document.getElementById("buscar-producto")?.value || "").trim().toLowerCase();
+    const tipo = document.getElementById("filtro-tipo")?.value || "";
+    const estado = document.getElementById("filtro-estado")?.value || "";
 
+    window.productosFiltrados = window.productosAdmin.filter(p => {
+        const coincideTexto = p.nombre.toLowerCase().includes(texto) || p.id.toLowerCase().includes(texto);
+        const coincideTipo = !tipo || p.tipo === tipo;
+        const coincideEstado = !estado || p.estado === estado;
+        return coincideTexto && coincideTipo && coincideEstado;
+    });
+
+    if (!resetearOrden && ordenActual.columna !== null) {
+        // Mantener orden temporal, forzamos ordenar
+        const tempAsc = ordenActual.ascendente;
+        ordenActual.ascendente = !tempAsc; // Hack para volver a acomodar
+        ordenarDatos(ordenActual.columna, document.querySelector(`th[data-col="${ordenActual.columna}"]`)?.dataset.tipo);
+    } else {
+        renderizarTabla();
+    }
+}
+
+// ------------------------------------------------------------------
+// ACCIONES DE BASE DE DATOS USANDO EL ESQUEMA DETECTADO
+// ------------------------------------------------------------------
+
+async function guardarFormulario(e) {
+    e.preventDefault();
+    if (!window.dbSchema) return mostrarToast("Espera a que cargue la base de datos.", "error");
+
+    const id = document.getElementById("f-id").value.trim().toUpperCase();
+    if (!id) return mostrarToast("El ID es obligatorio.", "error");
+
+    const inputArchivo = document.getElementById("f-imagen-file");
+    let urlImagen = document.getElementById("f-imagen").value.trim();
+
+    try {
+        // Verificar si se seleccionó uno o varios archivos
+        if (inputArchivo && inputArchivo.files.length > 0) {
+            const total = inputArchivo.files.length;
+            mostrarToast(`Subiendo ${total} imagen(es)...`, "info");
+            
+            // Subir todas las imágenes seleccionadas
+            urlImagen = await subirImagenesSupabase(inputArchivo.files, id);
+        }
+
+        // Construir el objeto payload
+        const payload = {};
+        payload[window.dbSchema.id] = id;
+        payload[window.dbSchema.tipo] = document.getElementById("f-tipo").value;
+        payload[window.dbSchema.nombre] = document.getElementById("f-nombre").value.trim();
+        payload[window.dbSchema.precio] = Number(document.getElementById("f-precio").value || 0);
+        payload[window.dbSchema.material] = document.getElementById("f-material").value.trim();
+        payload[window.dbSchema.descripcion] = document.getElementById("f-descripcion").value.trim();
+        payload[window.dbSchema.imagen] = urlImagen; // Se guardará una URL o URLs separadas por coma
+        payload[window.dbSchema.estado] = document.getElementById("f-estado").value;
+        payload[window.dbSchema.destacado] = document.getElementById("f-destacado").value;
+        payload[window.dbSchema.orden] = Number(document.getElementById("f-orden").value || 999);
+        payload[window.dbSchema.stock] = Number(document.getElementById("f-stock").value || 0);
+
+        let error;
+        if (editandoId) {
+            const res = await supabaseClient.from('productos').update(payload).eq(window.dbSchema.id, editandoId);
+            error = res.error;
+        } else {
+            const { data: maxResult, error: maxError } = await supabaseClient
+                .from('productos')
+                .select('N°')
+                .order('N°', { ascending: false })
+                .limit(1);
+
+            let maxN = 0;
+            if (!maxError && maxResult && maxResult.length > 0) {
+                maxN = Number(maxResult[0]['N°'] || 0);
+            } else {
+                maxN = window.productosAdmin.length;
+            }
+
+            payload["N°"] = maxN + 1;
+
+            const res = await supabaseClient.from('productos').insert([payload]);
+            error = res.error;
+        }
+
+        if (error) throw error;
+
+        sessionStorage.removeItem("oriza_productos_cache");
+
+        mostrarToast(editandoId ? "Producto actualizado correctamente" : "Producto creado correctamente", "exito");
+        
+        if (inputArchivo) inputArchivo.value = "";
+        
+        cerrarFormulario();
+        await recargarProductos();
+    } catch (err) {
+        mostrarToast("Error: " + err.message, "error");
+    }
+}
+
+// Función para subir una lista de imágenes a Supabase Storage
+async function subirImagenesSupabase(files, idProducto) {
+    const BUCKET_NAME = 'productos';
+    const urlsGuardadas = [];
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const extension = file.name.split('.').pop().toLowerCase();
+        
+        // Si hay una sola foto usa el ID (ej: PUL-001.jpg), si hay varias les agrega sufijo (ej: PUL-001-1.jpg, PUL-001-2.jpg)
+        const sufijo = files.length > 1 ? `-${i + 1}` : '';
+        const filePath = `${idProducto}${sufijo}.${extension}`;
+
+        console.log(`Subiendo imagen ${i + 1} de ${files.length}:`, filePath);
+
+        const { data, error } = await supabaseClient
+            .storage
+            .from(BUCKET_NAME)
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true
+            });
+
+        if (error) {
+            console.error(`Error subiendo la imagen ${file.name}:`, error);
+            throw new Error(`Error en imagen ${i + 1}: ` + error.message);
+        }
+
+        // Obtener la URL pública de cada imagen subida
+        const { data: urlData } = supabaseClient
+            .storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(filePath);
+
+        urlsGuardadas.push(urlData.publicUrl);
+    }
+
+    // Retorna un string con las URLs separadas por coma (o el arreglo de URLs)
+    return urlsGuardadas.join(',');
+}
+
+async function eliminarProducto(id) {
+    if (!confirm(`¿Estás seguro de eliminar el producto ${id}?`)) return;
+    try {
+        const { error } = await supabaseClient.from('productos').delete().eq(window.dbSchema.id, id);
+        if (error) throw error;
+        mostrarToast("Producto eliminado", "exito");
+        await recargarProductos();
+    } catch (err) { mostrarToast("Error al eliminar", "error"); }
+}
+
+async function actualizarStockRapido(id, nuevoStock) {
+    if (!window.dbSchema) return;
+    try {
+        const payload = {}; payload[window.dbSchema.stock] = Number(nuevoStock);
+        const { error } = await supabaseClient.from('productos').update(payload).eq(window.dbSchema.id, id);
+        if (error) throw error;
+        mostrarToast("Stock actualizado correctamente", "exito");
+        const p = window.productosAdmin.find(x => x.id === id);
+        if (p) p.stock = Number(nuevoStock);
+    } catch (err) { mostrarToast("Error al actualizar stock", "error"); }
+}
+
+async function toggleEstado(id) {
+    if (!window.dbSchema) return;
+    const prod = window.productosAdmin.find(p => p.id === id);
+    if (!prod) return;
+    
+    const nuevoEstado = prod.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+    const payload = {}; payload[window.dbSchema.estado] = nuevoEstado;
+    
+    try {
+        const { error } = await supabaseClient.from('productos').update(payload).eq(window.dbSchema.id, id);
+        if (error) throw error;
+        mostrarToast(`Estado cambiado a ${nuevoEstado}`, "exito");
+        await recargarProductos();
+    } catch (err) { mostrarToast("Error al cambiar estado", "error"); }
+}
+
+// ------------------------------------------------------------------
+// FORMULARIOS, LOGIN, EVENT LISTENERS Y PREVIEW
+// ------------------------------------------------------------------
+async function iniciarSesion(usuario, password) {
+    try {
+        const { data, error } = await supabaseClient.from('usuarios')
+            .select('*').ilike('usuario', usuario.trim()).eq('password', password.trim()).maybeSingle();
+            
+        if (error || !data) {
+            mostrarErrorLogin("Usuario o contraseña incorrectos.");
+            return false;
+        }
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ usuario: data.usuario, id: data.id }));
+        mostrarPanel();
+        await recargarProductos();
+        return true;
+    } catch (err) { return false; }
+}
+
+// Función para subir una imagen a Supabase Storage
+async function subirImagenSupabase(file, nombreArchivo) {
+    // Reemplaza 'productos' si le pusiste otro nombre a tu bucket
+    const BUCKET_NAME = 'productos'; 
+    
+    // Extensión del archivo
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${nombreArchivo}.${fileExt}`;
+
+    // 1. Subir el archivo al bucket
+    const { data, error } = await supabaseClient
+        .storage
+        .from(BUCKET_NAME)
+        .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true // Sobrescribe el archivo si ya existe
+        });
+
+    if (error) {
+        throw new Error("Error al subir la imagen: " + error.message);
+    }
+
+    // 2. Obtener la URL pública de la imagen subida
+    const { data: publicUrlData } = supabaseClient
+        .storage
+        .from(BUCKET_NAME)
+        .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl; // Retorna https://xyz.supabase.co/storage/v1/object/public/productos/...
+}
+
+function abrirFormulario(producto = null) {
     editandoId = producto ? producto.id : null;
+    const overlay = document.getElementById("form-overlay");
 
-    document.getElementById("form-titulo").textContent = producto ? "Editar producto" : "Nuevo producto";
+    document.querySelectorAll("#form-producto input, #form-producto select, #form-producto textarea").forEach(elemento => {
+    elemento.addEventListener("input", actualizarPreview);
+    elemento.addEventListener("change", actualizarPreview);
+});
 
-    const idInput = document.getElementById("f-id");
-    idInput.value = producto?.id || "";
-    idInput.disabled = !!producto;
+    if (!overlay) return;
 
-    document.getElementById("f-tipo").value = producto?.tipo || "";
+    document.getElementById("form-titulo").textContent = editandoId ? `Editar: ${editandoId}` : "Nuevo producto";
+    const inputId = document.getElementById("f-id");
+    inputId.value = producto?.id || "";
+    inputId.disabled = !!editandoId; 
+
+    document.getElementById("f-tipo").value = producto?.tipo || "PULSERA";
     document.getElementById("f-nombre").value = producto?.nombre || "";
     document.getElementById("f-precio").value = producto?.precio || "";
     document.getElementById("f-material").value = producto?.material || "";
     document.getElementById("f-descripcion").value = producto?.descripcion || "";
-
-    const imagenActual = (producto?.imagen || "").toString();
-    document.getElementById("f-imagen").value = imagenActual.startsWith("http") ? imagenActual : "";
-
+    document.getElementById("f-imagen").value = producto?.imagen || "";
     document.getElementById("f-estado").value = producto?.estado || "ACTIVO";
     document.getElementById("f-destacado").value = producto?.destacado || "NO";
-    document.getElementById("f-orden").value = producto?.orden ?? 999;
+    document.getElementById("f-orden").value = producto?.orden || "";
     document.getElementById("f-stock").value = producto?.stock ?? 0;
 
-    document.getElementById("form-overlay").hidden = false;
-
     actualizarPreview();
+    overlay.hidden = false;
 }
 
 function cerrarFormulario() {
     document.getElementById("form-overlay").hidden = true;
+    editandoId = null;
 }
 
+// 1. Escuchador de archivo local (SE AGREGA UNA SOLA VEZ FUERA DE LA FUNCIÓN)
+document.addEventListener("DOMContentLoaded", () => {
+    const inputImagenFile = document.getElementById("f-imagen-file");
+    
+    if (inputImagenFile) {
+        inputImagenFile.addEventListener("change", (e) => {
+            const prevImg = document.getElementById("preview-img");
+            const archivos = e.target.files;
 
+            if (archivos && archivos.length > 0 && prevImg) {
+                // Muestra la imagen local seleccionada de inmediato
+                prevImg.src = URL.createObjectURL(archivos[0]);
+            } else {
+                // Si limpia la selección, vuelve a evaluar el formulario
+                actualizarPreview();
+            }
+        });
+    }
+});
 
-async function guardarFormulario(e) {
+// 2. Función actualizarPreview limpia
+function actualizarPreview() {
+    // 1. Capturar los valores de los inputs
+    const id = document.getElementById("f-id")?.value;
+    const nombre = document.getElementById("f-nombre")?.value || "Nombre del producto";
+    const precio = Number(document.getElementById("f-precio")?.value || 0).toFixed(2);
+    const tipo = document.getElementById("f-tipo")?.value || "PULSERA";
+    const material = document.getElementById("f-material")?.value || "Perlas, Hilo de nylon";
+    const descripcion = document.getElementById("f-descripcion")?.value || "Descripción detallada del producto...";
+    const stock = Number(document.getElementById("f-stock")?.value || 0);
+    const destacado = document.getElementById("f-destacado")?.value;
+    const img = document.getElementById("f-imagen")?.value;
+    const inputImagenFile = document.getElementById("f-imagen-file");
 
-    e.preventDefault();
-
-    const id = document.getElementById("f-id").value.trim();
-    if (!id) { mostrarToast("El ID es obligatorio."); return; }
-
-    if (!editandoId && productosAdmin.some(p => p.id === id)) {
-        mostrarToast("Ya existe un producto con ese ID.");
-        return;
+    // 2. Actualizar textos básicos
+    if (document.getElementById("preview-nombre")) {
+        document.getElementById("preview-nombre").textContent = nombre;
+    }
+    if (document.getElementById("preview-precio")) {
+        document.getElementById("preview-precio").textContent = `S/ ${precio}`;
+    }
+    if (document.getElementById("preview-tipo")) {
+        document.getElementById("preview-tipo").textContent = tipo;
     }
 
-    const producto = {
-        id,
-        tipo: document.getElementById("f-tipo").value,
-        nombre: document.getElementById("f-nombre").value.trim(),
-        precio: Number(document.getElementById("f-precio").value || 0),
-        material: document.getElementById("f-material").value.trim(),
-        descripcion: document.getElementById("f-descripcion").value.trim(),
-        imagen: document.getElementById("f-imagen").value.trim(),
-        estado: document.getElementById("f-estado").value,
-        destacado: document.getElementById("f-destacado").value,
-        orden: Number(document.getElementById("f-orden").value || 999),
-        stock: Number(document.getElementById("f-stock").value || 0)
-    };
-
-    const btn = e.target.querySelector('button[type="submit"]');
-    if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
-
-    let resultado;
-    try {
-        resultado = await llamarApi({ action: "guardar", ...producto });
-    } catch (error) {
-        resultado = { error: error.message };
+    // 3. Actualizar Materiales y Descripción
+    if (document.getElementById("preview-material")) {
+        document.getElementById("preview-material").textContent = `Materiales: ${material}`;
+    }
+    if (document.getElementById("preview-descripcion")) {
+        document.getElementById("preview-descripcion").textContent = descripcion;
     }
 
-    if (btn) { btn.disabled = false; btn.textContent = "Guardar"; }
-
-    if (resultado.error) {
-        mostrarToast("Error al guardar: " + resultado.error);
-        return;
+    // 4. Actualizar Stock / Disponibilidad
+    const elStock = document.getElementById("preview-stock");
+    if (elStock) {
+        if (stock <= 0) {
+            elStock.textContent = "Agotado";
+            elStock.className = "preview-stock agotado";
+        } else {
+            elStock.textContent = stock <= 3 ? `¡Últimas ${stock} unidades!` : "Disponible";
+            elStock.className = "preview-stock disponible";
+        }
     }
 
-    cerrarFormulario();
-    await recargarProductos();
+    // 5. Actualizar insignia de Destacado
+    const elDestacado = document.getElementById("preview-destacado");
+    if (elDestacado) {
+        elDestacado.hidden = destacado !== "SI";
+    }
 
-    mostrarToast("Producto guardado correctamente", "ok");
+    // 6. Actualizar Imagen en vista previa apuntando al Bucket
+    const prevImg = document.getElementById("preview-img");
+    if (prevImg) {
+        if (inputImagenFile && inputImagenFile.files && inputImagenFile.files.length > 0) {
+            prevImg.src = URL.createObjectURL(inputImagenFile.files[0]);
+        } else if (img && img.trim() !== "") {
+            const primeraUrl = img.split(",")[0].trim();
+            prevImg.src = primeraUrl;
+        } else if (id && id.trim() !== "") {
+            prevImg.src = `${SUPABASE_STORAGE_URL}/${id.trim().toUpperCase()}.webp`;
+        } else {
+            prevImg.src = IMAGEN_DEFAULT_BUCKET;
+        }
+    }
 }
 
-async function eliminarProductoAdmin(id) {
-
-    const producto = productosAdmin.find(p => p.id === id);
-    if (!producto) return;
-
-    if (!confirm(`¿Eliminar "${producto.nombre}" definitivamente? Esta acción no se puede deshacer.`)) return;
-
-    let resultado;
-    try {
-        resultado = await llamarApi({ action: "eliminar", id });
-    } catch (error) {
-        resultado = { error: error.message };
-    }
-
-    if (resultado.error) {
-        mostrarToast("Error al eliminar: " + resultado.error);
-        return;
-    }
-
-    await recargarProductos();
-
-    mostrarToast("Producto eliminado", "ok");
-}
-
-async function actualizarStockRapido(id, nuevoStock) {
-
-    const producto = productosAdmin.find(p => p.id === id);
-    if (!producto) return;
-
-    const actualizado = { ...producto, stock: Number(nuevoStock) };
-
-    let resultado;
-    try {
-        resultado = await llamarApi({ action: "guardar", ...actualizado });
-    } catch (error) {
-        resultado = { error: error.message };
-    }
-
-    if (resultado.error) {
-        mostrarToast("Error al actualizar stock: " + resultado.error);
-        return;
-    }
-
-    producto.stock = Number(nuevoStock);
-
-    renderizarTabla();
-
-    mostrarToast("Stock actualizado", "ok");
-}
-
-async function toggleEstado(id) {
-
-    const producto = productosAdmin.find(p => p.id === id);
-    if (!producto) return;
-
-    const activo = (producto.estado || "").toString().toLowerCase() === "activo";
-    const actualizado = { ...producto, estado: activo ? "INACTIVO" : "ACTIVO" };
-
-    let resultado;
-    try {
-        resultado = await llamarApi({ action: "guardar", ...actualizado });
-    } catch (error) {
-        resultado = { error: error.message };
-    }
-
-    if (resultado.error) {
-        mostrarToast("Error: " + resultado.error);
-        return;
-    }
-
-    producto.estado = actualizado.estado;
-    renderizarTabla();
-
-}
-
-async function recargarProductos() {
-
-    let data;
-    try {
-        data = await llamarApi({ action: "listar" });
-    } catch (error) {
-        mostrarToast("No se pudo conectar: " + error.message);
-        return;
-    }
-
-    if (data.error) {
-        mostrarToast("Error al recargar: " + data.error);
-        return;
-    }
-
-    productosAdmin = data.productos;
-    renderizarTabla();
-
+function mostrarToast(mensaje, tipo = "info") {
+    const toast = document.getElementById("toast");
+    if (!toast) return;
+    toast.className = `mostrar ${tipo}`;
+    toast.textContent = mensaje;
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => { toast.className = ""; }, 3000);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-
-    // sessionStorage.removeItem(SESSION_KEY);
-
-    const passwordGuardada = sessionStorage.getItem(SESSION_KEY);
-
-    if (passwordGuardada) {
-    iniciarSesion(passwordGuardada);
+    if (sessionStorage.getItem(SESSION_KEY)) {
+        mostrarPanel();
+        recargarProductos();
     }
-    
+
     document.getElementById("login-form")?.addEventListener("submit", (e) => {
         e.preventDefault();
-        const pass = document.getElementById("login-password").value;
-        iniciarSesion(pass);
+        iniciarSesion(document.getElementById("login-user").value, document.getElementById("login-password").value);
     });
 
-    document.getElementById("btn-cerrar-sesion")?.addEventListener("click", cerrarSesion);
+    document.getElementById("btn-cerrar-sesion")?.addEventListener("click", () => { sessionStorage.clear(); location.reload(); });
     document.getElementById("btn-nuevo")?.addEventListener("click", () => abrirFormulario(null));
     document.getElementById("form-cerrar")?.addEventListener("click", cerrarFormulario);
     document.getElementById("form-producto")?.addEventListener("submit", guardarFormulario);
 
+    // Tabla: Eventos Click en Botones de Fila
     document.getElementById("tabla-productos")?.addEventListener("click", (e) => {
-
         const btn = e.target.closest("button[data-accion]");
         if (!btn) return;
-
         const id = btn.dataset.id;
         const accion = btn.dataset.accion;
 
-        if (accion === "editar") {
-            abrirFormulario(productosAdmin.find(p => p.id === id));
-        } else if (accion === "eliminar") {
-            eliminarProductoAdmin(id);
-        } else if (accion === "toggle-estado") {
-            toggleEstado(id);
-        }
-
+        if (accion === "editar") abrirFormulario(window.productosAdmin.find(p => p.id === id));
+        else if (accion === "eliminar") eliminarProducto(id);
+        else if (accion === "toggle-estado") toggleEstado(id);
     });
 
+    // Tabla: Modificar Input de Stock
     document.getElementById("tabla-productos")?.addEventListener("change", (e) => {
         if (e.target.classList.contains("input-stock")) {
             actualizarStockRapido(e.target.dataset.id, e.target.value);
         }
     });
 
-    document.getElementById("buscar-producto") ?.addEventListener("input", aplicarFiltros);
-
-    document.getElementById("filtro-tipo") ?.addEventListener("change", aplicarFiltros);
-
-    document.getElementById("filtro-estado") ?.addEventListener("change", aplicarFiltros);
-
-    [
-"f-id",
-"f-nombre",
-"f-precio",
-"f-material",
-"f-descripcion",
-"f-imagen",
-"f-tipo",
-"f-destacado",
-"f-stock"
-].forEach(id=>{
-
-    document.getElementById(id)
-    ?.addEventListener("input", actualizarPreview);
-
-    document.getElementById(id)
-    ?.addEventListener("change", actualizarPreview);
-
-});
-
-});
-
-document.querySelectorAll('#tabla-admin th[data-col]').forEach(header => {
-    header.style.cursor = 'pointer'; // Hace que la cabecera sea clickeable
-    
-    header.addEventListener('click', () => {
-        const table = header.closest('table');
-        const tbody = table.querySelector('tbody');
-        const columnIndex = parseInt(header.getAttribute('data-col'));
-        const tipo = header.getAttribute('data-tipo');
-        
-        // Determinar si ordenamos ascendente o descendente
-        const isAsc = header.classList.contains('asc');
-        
-        // Resetear iconos de todas las cabeceras
-        table.querySelectorAll('th span.sort-icon').forEach(icon => icon.textContent = '↕');
-        table.querySelectorAll('th').forEach(th => th.classList.remove('asc', 'desc'));
-
-        // Obtener todas las filas
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-
-        // Ordenar las filas
-        rows.sort((rowA, rowB) => {
-            let cellA = rowA.children[columnIndex]?.textContent.trim() || '';
-            let cellB = rowB.children[columnIndex]?.textContent.trim() || '';
-
-            if (tipo === 'num' || tipo === 'precio') {
-                // Limpiar símbolos de moneda o caracteres no numéricos
-                const numA = parseFloat(cellA.replace(/[^0-9.-]+/g, '')) || 0;
-                const numB = parseFloat(cellB.replace(/[^0-9.-]+/g, '')) || 0;
-                return isAsc ? numB - numA : numA - numB;
-            } else {
-                // Orden alfabético
-                return isAsc 
-                    ? cellB.localeCompare(cellA, undefined, { numeric: true }) 
-                    : cellA.localeCompare(cellB, undefined, { numeric: true });
-            }
+    // Tabla: Click en Cabeceras para ORDENAR (Filtros superiores ASC/DESC)
+    document.querySelectorAll("th[data-col]").forEach(th => {
+        th.style.cursor = "pointer"; // Poner el cursor tipo mano para click
+        th.addEventListener("click", () => {
+            ordenarDatos(parseInt(th.dataset.col), th.dataset.tipo);
         });
+    });
 
-        // Aplicar la nueva dirección y actualizar el icono
-        if (isAsc) {
-            header.classList.add('desc');
-            header.querySelector('.sort-icon').textContent = '↓';
-        } else {
-            header.classList.add('asc');
-            header.querySelector('.sort-icon').textContent = '↑';
-        }
+    // Filtros de búsqueda (inputs)
+    document.getElementById("buscar-producto")?.addEventListener("input", () => aplicarFiltros(true));
+    document.getElementById("filtro-tipo")?.addEventListener("change", () => aplicarFiltros(true));
+    document.getElementById("filtro-estado")?.addEventListener("change", () => aplicarFiltros(true));
 
-        // Reinsertar las filas en el nuevo orden
-        rows.forEach(row => tbody.appendChild(row));
+    ["f-id", "f-nombre", "f-precio", "f-imagen", "f-tipo"].forEach(id => {
+        document.getElementById(id)?.addEventListener("input", actualizarPreview);
     });
 });

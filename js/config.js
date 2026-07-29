@@ -3,9 +3,15 @@ const CONFIG = {
   instagram: "https://www.instagram.com/oriza_art/",
   facebook: "https://www.facebook.com/oriza.art/",
 
-  // Google Sheets: fuente de datos del catálogo (usada por js/api.js)
-  SHEETS: {
-    ID: "1ZfaGVT2e50SQZshf115OshfN4iWMt7d-_ayEM-HL4vw",
-    SHEET: "Productos"
+  supabase: {
+    url: "https://ltzfnsrxkkyuupwyykem.supabase.co",
+    anonKey: "sb_publishable_u-VnItuSvVJ8UiyyFtMlLQ_kSqVYKdp"
   }
 };
+
+// URL Base de tu bucket de Supabase Storage para imágenes
+const SUPABASE_STORAGE_URL = "https://ltzfnsrxkkyuupwyykem.supabase.co/storage/v1/object/public/productos";
+const IMAGEN_DEFAULT_BUCKET = `${SUPABASE_STORAGE_URL}/no-image.webp`;
+
+// Inicialización global del cliente de Supabase
+const supabaseClient = window.supabase ? window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey) : null;

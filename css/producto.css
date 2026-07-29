@@ -1,147 +1,15 @@
 .producto {
-  
-  max-width: 1200px;
-  
-  margin: auto;
-  
-  padding: 40px 20px;
-  
-  display: grid;
-  
-  gap: 40px;
-  
-}
-
-.producto-imagen img {
-  
-  width: 100%;
-  
-  border-radius: 20px;
-  
-  box-shadow: 0 8px 25px rgba(0, 0, 0, .1);
-  
-}
-
-.producto-info h1 {
-  
-  font-size: 2rem;
-  
-  color: #6F4E37;
-  
-  margin: 20px 0;
-  
-}
-
-.producto-info p {
-  
-  line-height: 1.8;
-  
-  color: #666;
-  
-  margin-bottom: 30px;
-  
-}
-
-.btn-volver {
-  
-  display: inline-block;
-  
-  margin-top: 20px;
-  
-  text-decoration: none;
-  
-  color: #6F4E37;
-  
-  font-weight: bold;
-  
-}
-
-@media(min-width:768px) {
-  
-  .producto {
-    
-    grid-template-columns: 1fr 1fr;
-    
-    align-items: center;
-    
-  }
-  
-} 
-
-.precio-producto{
-    font-size:2rem;
-    font-weight:700;
-    color:#8B5E3C;
-    margin:15px 0;
-}
-
-.materiales-producto{
-    margin:20px 0;
-    color:#666;
-    line-height:1.6;
-}
-
-.producto-acciones{
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-    margin-bottom:10px;
-}
-
-.btn-producto{
-    border:none;
-    cursor:pointer;
-    font-size:1rem;
-    font-family:inherit;
-    text-align:center;
-}
-
-.btn-outline{
-    background:transparent;
-    color:#6F4E37;
-    border:2px solid #6F4E37;
-}
-
-.btn-outline:hover{
-    background:#6F4E37;
-    color:#fff;
-}
-
-.btn-producto:disabled,
-.btn-producto.agotado{
-    background:#ccc;
-    color:#888;
-    cursor:not-allowed;
-    border-color:#ccc;
-}
-
-.btn-producto:disabled:hover{
-    transform:none;
-    background:#ccc;
-}
-
-.aviso-stock{
-    color:#E63946;
-    font-weight:600;
-    font-size:.9rem;
-    margin-top:-4px;
-}
-
-@media(min-width:480px){
-    .producto-acciones{
-        flex-direction:row;
-    }
-    .producto-acciones .btn-producto{
-        flex:1;
-    }
-}
-
-.producto {
   max-width: 1200px;
   margin: auto;
   padding: 40px 20px;
   display: grid;
   gap: 40px;
+  opacity: 0;
+  transition: opacity 0.25s ease-in-out;
+}
+
+.producto.cargado {
+  opacity: 1;
 }
 
 /* GALERÍA DE IMÁGENES */
@@ -156,7 +24,7 @@
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 8px 25px rgba(0, 0, 0, .1);
-  background: #fff;
+  background: #f4ede4;
   aspect-ratio: 1 / 1;
 }
 
@@ -174,6 +42,8 @@
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 5px;
+  flex-wrap: wrap;
+  margin-top: 15px;
 }
 
 .thumb-item {
@@ -231,7 +101,7 @@
     grid-template-columns: 1fr 1fr;
     align-items: start;
   }
-} 
+}
 
 .precio-producto{
     font-size:2rem;
@@ -246,43 +116,142 @@
     line-height:1.6;
 }
 
+/*=========================
+  ACCIONES DEL PRODUCTO — estilo artesanal
+=========================*/
+
 .producto-acciones{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:14px;
+    margin-bottom:14px;
+}
+
+@media(min-width:480px){
+    .producto-acciones{
+        grid-template-columns:repeat(4,1fr);
+    }
+}
+
+/* Base compartida por las 4 tarjetas-botón */
+.producto-acciones .btn-producto,
+.producto-acciones .btn-favorito-producto,
+.producto-acciones .btn-compartir-producto{
+    position:relative;
     display:flex;
     flex-direction:column;
-    gap:12px;
-    margin-bottom:10px;
-}
-
-.btn-producto{
-    border:none;
-    cursor:pointer;
-    font-size:1rem;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    min-height:96px;
+    padding:16px 10px;
+    border-radius:18px;
     font-family:inherit;
+    font-size:.85rem;
+    font-weight:600;
+    line-height:1.25;
     text-align:center;
+    text-decoration:none;
+    cursor:pointer;
+    background:#F4E7D8;
+    color:#6F4E37;
+    border:1px solid #E7D8C9;
+    box-shadow:0 4px 14px rgba(111,78,55,.08);
+    transition:transform .25s ease, box-shadow .25s ease, background .25s ease, color .25s ease;
 }
 
+/* Detalle "hecho a mano": costura punteada interior */
+.producto-acciones .btn-producto::before,
+.producto-acciones .btn-favorito-producto::before,
+.producto-acciones .btn-compartir-producto::before{
+    content:"";
+    position:absolute;
+    inset:5px;
+    border-radius:14px;
+    border:1px dashed rgba(111,78,55,.18);
+    pointer-events:none;
+    transition:border-color .25s ease;
+}
+
+.producto-acciones .btn-producto span:first-child,
+.producto-acciones .btn-favorito-producto span:first-child,
+.producto-acciones .btn-compartir-producto span:first-child{
+    font-size:1.4rem;
+    line-height:1;
+}
+
+.producto-acciones .btn-producto:hover,
+.producto-acciones .btn-favorito-producto:hover,
+.producto-acciones .btn-compartir-producto:hover{
+    transform:translateY(-3px);
+    background:#6F4E37;
+    color:#fff;
+    box-shadow:0 10px 22px rgba(111,78,55,.25);
+}
+
+.producto-acciones .btn-producto:hover::before,
+.producto-acciones .btn-favorito-producto:hover::before,
+.producto-acciones .btn-compartir-producto:hover::before{
+    border-color:rgba(255,255,255,.35);
+}
+
+.producto-acciones .btn-producto:active,
+.producto-acciones .btn-favorito-producto:active,
+.producto-acciones .btn-compartir-producto:active{
+    transform:translateY(-1px) scale(.98);
+}
+
+/* Agregar al carrito: acento sólido para destacar la acción principal */
+#btnAgregarCarrito.btn-producto{
+    background:#6F4E37;
+    color:#fff;
+    border-color:#6F4E37;
+}
+
+#btnAgregarCarrito.btn-producto:hover{
+    background:#8A6146;
+}
+
+#btnAgregarCarrito.btn-producto::before{
+    border-color:rgba(255,255,255,.3);
+}
+
+/* WhatsApp: contorno con acento verde artesanal */
 .btn-outline{
-    background:transparent;
-    color:#6F4E37;
-    border:2px solid #6F4E37;
+    background:#fff;
+    color:#25733F;
+    border:1.5px solid #25733F;
+}
+
+.btn-outline::before{
+    border-color:rgba(37,115,63,.2) !important;
 }
 
 .btn-outline:hover{
-    background:#6F4E37;
-    color:#fff;
+    background:#25733F !important;
+    color:#fff !important;
 }
 
+/* Favorito guardado */
+.btn-favorito-producto.activo{
+    background:#E63946;
+    color:#fff;
+    border-color:#E63946;
+}
+
+.btn-favorito-producto.activo::before{
+    border-color:rgba(255,255,255,.35);
+}
+
+/* Estado agotado */
 .btn-producto:disabled,
 .btn-producto.agotado{
-    background:#ccc;
-    color:#888;
+    background:#e2ddd6 !important;
+    color:#999 !important;
+    border-color:#e2ddd6 !important;
     cursor:not-allowed;
-    border-color:#ccc;
-}
-
-.btn-producto:disabled:hover{
-    transform:none;
-    background:#ccc;
+    box-shadow:none;
+    transform:none !important;
 }
 
 .aviso-stock{
@@ -290,94 +259,4 @@
     font-weight:600;
     font-size:.9rem;
     margin-top:-4px;
-}
-
-@media(min-width:480px){
-    .producto-acciones{
-        flex-direction:row;
-    }
-    .producto-acciones .btn-producto{
-        flex:1;
-    }
-}
-
-/* Contenedor de miniaturas */
-#galeriaThumbs {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-    flex-wrap: wrap;
-}
-
-.thumb-item {
-    width: 60px;
-    height: 60px;
-    border: 2px solid #ccc;
-    border-radius: 6px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.thumb-item.activo {
-    border-color: #000; /* O el color principal de tu marca */
-    box-shadow: 0 0 5px rgba(0,0,0,0.3);
-}
-
-.thumb-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* Suaviza la carga de la vista del producto individual */
-.producto {
-    opacity: 0;
-    transition: opacity 0.25s ease-in-out;
-}
-
-.producto.cargado {
-    opacity: 1;
-}
-
-.producto-imagen-principal {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    background-color: #f4ede4; /* Fondo sutil para prevenir el parpadeo blanco */
-    border-radius: 20px;
-    overflow: hidden;
-}
-
-/* Botones de Favoritos y Compartir en la Ficha del Producto */
-.producto-meta-acciones {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-}
-
-.btn-favorito-producto,
-.btn-compartir-producto {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #F4E7D8;
-    color: #6F4E37;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 25px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.25s ease;
-}
-
-.btn-favorito-producto:hover,
-.btn-compartir-producto:hover {
-    background: #6F4E37;
-    color: #fff;
-}
-
-.btn-favorito-producto.activo {
-    background: #E63946;
-    color: #fff;
 }

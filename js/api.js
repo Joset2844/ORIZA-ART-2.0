@@ -1,56 +1,66 @@
 async function cargarProductos() {
+    if (!supabaseClient) {
+        console.error("❌ El cliente de Supabase no está inicializado.");
+        return [];
+    }
 
-const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEETS.ID}/gviz/tq?sheet=${CONFIG.SHEETS.SHEET}&tqx=out:json`;
+    // Consulta todos los registros de la tabla 'productos'
+    const { data, error } = await supabaseClient
+        .from('productos')
+        .select('*');
 
-    const res = await fetch(url);
-    const txt = await res.text();
+    if (error) {
+        console.error("❌ Error al consultar Supabase:", error);
+        return [];
+    }
 
-    const json = JSON.parse(txt.substring(47).slice(0,-2));
-
-    return json.table.rows
-        .filter(r => r.c[8]?.v?.toString().toLowerCase() === "activo")
-        .sort((a, b) => (Number(a.c[10]?.v || 999) - Number(b.c[10]?.v || 999)))
+    return data
+        .filter(r => {
+            const estado = (r.estado || r.ESTADO || "").toString().toLowerCase();
+            return estado === "activo";
+        })
+        .sort((a, b) => {
+            const ordenA = Number(a.orden ?? a.ORDEN ?? 999);
+            const ordenB = Number(b.orden ?? b.ORDEN ?? 999);
+            return ordenA - ordenB;
+        })
         .map((r, idx) => {
+            const codigo = (r.id_codigo || r.codigo || r.ID || "").toString().trim().toUpperCase();
+            const numId = Number(r.n_num || r['N°'] || r.id || (idx + 1));
+            const stockRaw = r.stock ?? r.STOCK;
+            const stock = (stockRaw === undefined || stockRaw === null || stockRaw === "") ? 999 : Number(stockRaw);
+            const materialStr = (r.material || r.MATERIAL || "").toString();
+            const imagenRaw = (r.imagen || r.VACIO || "").toString().trim();
 
-            const stockRaw = r.c[11]?.v;
-            const stock = (stockRaw === undefined || stockRaw === "") ? 999 : Number(stockRaw);
+            // Lógica para asignar la imagen desde el Bucket:
+            let urlImagen = IMAGEN_DEFAULT_BUCKET;
+
+            if (imagenRaw.startsWith("http")) {
+                urlImagen = imagenRaw;
+            } else if (imagenRaw && !imagenRaw.includes("no-image")) {
+                // Si viene sólo el nombre del archivo (ej. foto.webp)
+                const nombreLimpio = imagenRaw.replace(/^img\//, '');
+                urlImagen = `${SUPABASE_STORAGE_URL}/${nombreLimpio}`;
+            } else if (codigo) {
+                // Si no tiene campo de imagen, usa el código apuntando al bucket
+                urlImagen = `${SUPABASE_STORAGE_URL}/${codigo}.webp`;
+            }
 
             return {
-
-                id: idx + 1,
-
-                codigo: r.c[1]?.v || "",
-
-                categoria: r.c[2]?.v || "",
-
-                nombre: r.c[3]?.v || "",
-
-                precio: Number(r.c[4]?.v || 0),
-
-                materiales: (r.c[5]?.v || "")
-                    .split(",")
-                    .map(x=>x.trim())
-                    .filter(Boolean),
-
-                descripcion: r.c[6]?.v || "",
-
-                imagen: (() => {
-                    const valor = (r.c[7]?.v || "").toString().trim();
-                    return valor.startsWith("http") ? valor : `img/${r.c[1]?.v}.webp`;
-                })(),
-
-                destacado:
-                    (r.c[9]?.v || "")
-                    .toString()
-                    .toLowerCase()==="si",
-
-                orden: Number(r.c[10]?.v || 999),
-
+                id: numId,
+                codigo: codigo,
+                categoria: (r.tipo || r.TIPO || "").toString(),
+                nombre: (r.nombre || r.NOMBRE || "").toString(),
+                precio: Number(r.precio ?? r.PRECIO ?? 0),
+                materiales: materialStr
+                    ? materialStr.split(",").map(x => x.trim()).filter(Boolean)
+                    : [],
+                descripcion: (r.descripcion || r['DESCRIPCION ESPIRITUAL'] || "").toString(),
+                imagen: urlImagen,
+                destacado: (r.destacado || r.DESTACADO || "").toString().toLowerCase() === "si",
+                orden: Number(r.orden ?? r.ORDEN ?? 999),
                 stock: stock,
-
                 agotado: stock <= 0
-
             };
-
         });
 }
