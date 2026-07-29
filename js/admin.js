@@ -212,17 +212,35 @@ async function guardarFormulario(e) {
     const id = document.getElementById("f-id").value.trim().toUpperCase();
     if (!id) return mostrarToast("El ID es obligatorio.", "error");
 
+    const inputPrincipal = document.getElementById("f-imagen-principal");
     const inputArchivo = document.getElementById("f-imagen-file");
     let urlImagen = document.getElementById("f-imagen").value.trim();
 
     try {
-        // Verificar si se seleccionó uno o varios archivos
-        if (inputArchivo && inputArchivo.files.length > 0) {
-            const total = inputArchivo.files.length;
+        // Determinar imagen principal y otras imágenes por separado
+        const archivoPrincipal = (inputPrincipal && inputPrincipal.files.length > 0)
+            ? inputPrincipal.files[0]
+            : null;
+        const archivosOtras = (inputArchivo && inputArchivo.files.length > 0)
+            ? Array.from(inputArchivo.files)
+            : [];
+
+        if (archivoPrincipal || archivosOtras.length > 0) {
+            const total = (archivoPrincipal ? 1 : 0) + archivosOtras.length;
             mostrarToast(`Subiendo ${total} imagen(es)...`, "info");
-            
-            // Subir todas las imágenes seleccionadas
-            urlImagen = await subirImagenesSupabase(inputArchivo.files, id);
+
+            const nuevasUrls = await subirImagenesSupabase(id, {
+                principal: archivoPrincipal,
+                otras: archivosOtras
+            });
+
+            if (!archivoPrincipal && urlImagen) {
+                // No se subió una nueva principal: conservar la URL principal existente
+                const urlPrincipalExistente = urlImagen.split(",")[0].trim();
+                urlImagen = [urlPrincipalExistente, nuevasUrls].filter(Boolean).join(",");
+            } else {
+                urlImagen = nuevasUrls;
+            }
         }
 
         // Construir el objeto payload
@@ -269,6 +287,7 @@ async function guardarFormulario(e) {
 
         mostrarToast(editandoId ? "Producto actualizado correctamente" : "Producto creado correctamente", "exito");
         
+        if (inputPrincipal) inputPrincipal.value = "";
         if (inputArchivo) inputArchivo.value = "";
         
         cerrarFormulario();
@@ -278,44 +297,101 @@ async function guardarFormulario(e) {
     }
 }
 
-// Función para subir una lista de imágenes a Supabase Storage
-async function subirImagenesSupabase(files, idProducto) {
+// Convierte un archivo de imagen (jpg, png, etc.) a un Blob en formato WEBP usando canvas
+function convertirImagenAWebp(file, calidad = 0.85) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            canvas.toBlob(
+                (blob) => {
+                    URL.revokeObjectURL(objectUrl);
+                    if (!blob) {
+                        reject(new Error(`No se pudo convertir "${file.name}" a WEBP (el navegador no devolvió datos).`));
+                        return;
+                    }
+                    resolve(blob);
+                },
+                'image/webp',
+                calidad
+            );
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error(`No se pudo leer la imagen "${file.name}" para convertirla a WEBP.`));
+        };
+
+        img.src = objectUrl;
+    });
+}
+
+// Sube la imagen principal y las imágenes secundarias de un producto a Supabase Storage.
+// La principal siempre se guarda como {id}.webp (sin sufijo).
+// Las secundarias se guardan como {id}-2.webp, {id}-3.webp, etc.
+async function subirImagenesSupabase(idProducto, { principal = null, otras = [] } = {}) {
     const BUCKET_NAME = 'productos';
     const urlsGuardadas = [];
 
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const extension = file.name.split('.').pop().toLowerCase();
-        
-        // Si hay una sola foto usa el ID (ej: PUL-001.jpg), si hay varias les agrega sufijo (ej: PUL-001-1.jpg, PUL-001-2.jpg)
-        const sufijo = files.length > 1 ? `-${i + 1}` : '';
-        const filePath = `${idProducto}${sufijo}.${extension}`;
+    const subirUnaImagen = async (file, filePath, indiceLog, totalLog) => {
+        console.log(`Convirtiendo y subiendo imagen ${indiceLog} de ${totalLog}:`, filePath);
 
-        console.log(`Subiendo imagen ${i + 1} de ${files.length}:`, filePath);
+        let blobWebp;
+        try {
+            blobWebp = await convertirImagenAWebp(file);
+        } catch (convError) {
+            console.error(`Error convirtiendo la imagen ${file.name}:`, convError);
+            throw new Error(`Error al convertir imagen ${indiceLog} a WEBP: ` + convError.message);
+        }
 
-        const { data, error } = await supabaseClient
+        const { error } = await supabaseClient
             .storage
             .from(BUCKET_NAME)
-            .upload(filePath, file, {
+            .upload(filePath, blobWebp, {
                 cacheControl: '3600',
-                upsert: true
+                upsert: true,
+                contentType: 'image/webp'
             });
 
         if (error) {
             console.error(`Error subiendo la imagen ${file.name}:`, error);
-            throw new Error(`Error en imagen ${i + 1}: ` + error.message);
+            throw new Error(`Error en imagen ${indiceLog}: ` + error.message);
         }
 
-        // Obtener la URL pública de cada imagen subida
         const { data: urlData } = supabaseClient
             .storage
             .from(BUCKET_NAME)
             .getPublicUrl(filePath);
 
-        urlsGuardadas.push(urlData.publicUrl);
+        return urlData.publicUrl;
+    };
+
+    const totalLog = (principal ? 1 : 0) + otras.length;
+    let indiceLog = 1;
+
+    // 1. Imagen principal: siempre sin sufijo
+    if (principal) {
+        const filePath = `${idProducto}.webp`;
+        urlsGuardadas.push(await subirUnaImagen(principal, filePath, indiceLog, totalLog));
+        indiceLog++;
     }
 
-    // Retorna un string con las URLs separadas por coma (o el arreglo de URLs)
+    // 2. Imágenes secundarias: sufijo desde -2
+    for (let i = 0; i < otras.length; i++) {
+        const filePath = `${idProducto}-${i + 2}.webp`;
+        urlsGuardadas.push(await subirUnaImagen(otras[i], filePath, indiceLog, totalLog));
+        indiceLog++;
+    }
+
+    // Retorna un string con las URLs separadas por coma
     return urlsGuardadas.join(',');
 }
 
@@ -376,22 +452,22 @@ async function iniciarSesion(usuario, password) {
     } catch (err) { return false; }
 }
 
-// Función para subir una imagen a Supabase Storage
+// Función para subir una imagen a Supabase Storage (convierte a WEBP antes de subir)
 async function subirImagenSupabase(file, nombreArchivo) {
     // Reemplaza 'productos' si le pusiste otro nombre a tu bucket
     const BUCKET_NAME = 'productos'; 
     
-    // Extensión del archivo
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${nombreArchivo}.${fileExt}`;
+    const filePath = `${nombreArchivo}.webp`;
+    const blobWebp = await convertirImagenAWebp(file);
 
     // 1. Subir el archivo al bucket
     const { data, error } = await supabaseClient
         .storage
         .from(BUCKET_NAME)
-        .upload(filePath, file, {
+        .upload(filePath, blobWebp, {
             cacheControl: '3600',
-            upsert: true // Sobrescribe el archivo si ya existe
+            upsert: true, // Sobrescribe el archivo si ya existe
+            contentType: 'image/webp'
         });
 
     if (error) {
@@ -434,6 +510,12 @@ function abrirFormulario(producto = null) {
     document.getElementById("f-orden").value = producto?.orden || "";
     document.getElementById("f-stock").value = producto?.stock ?? 0;
 
+    // Limpiar cualquier archivo seleccionado en una edición anterior
+    const inputImagenPrincipal = document.getElementById("f-imagen-principal");
+    const inputImagenFile = document.getElementById("f-imagen-file");
+    if (inputImagenPrincipal) inputImagenPrincipal.value = "";
+    if (inputImagenFile) inputImagenFile.value = "";
+
     actualizarPreview();
     overlay.hidden = false;
 }
@@ -445,21 +527,27 @@ function cerrarFormulario() {
 
 // 1. Escuchador de archivo local (SE AGREGA UNA SOLA VEZ FUERA DE LA FUNCIÓN)
 document.addEventListener("DOMContentLoaded", () => {
+    const inputImagenPrincipal = document.getElementById("f-imagen-principal");
     const inputImagenFile = document.getElementById("f-imagen-file");
-    
-    if (inputImagenFile) {
-        inputImagenFile.addEventListener("change", (e) => {
-            const prevImg = document.getElementById("preview-img");
-            const archivos = e.target.files;
 
-            if (archivos && archivos.length > 0 && prevImg) {
-                // Muestra la imagen local seleccionada de inmediato
-                prevImg.src = URL.createObjectURL(archivos[0]);
-            } else {
-                // Si limpia la selección, vuelve a evaluar el formulario
-                actualizarPreview();
-            }
-        });
+    const manejarCambioArchivo = (e) => {
+        const prevImg = document.getElementById("preview-img");
+        const archivos = e.target.files;
+
+        if (archivos && archivos.length > 0 && prevImg) {
+            // Muestra la imagen local seleccionada de inmediato
+            prevImg.src = URL.createObjectURL(archivos[0]);
+        } else {
+            // Si limpia la selección, vuelve a evaluar el formulario
+            actualizarPreview();
+        }
+    };
+
+    if (inputImagenPrincipal) {
+        inputImagenPrincipal.addEventListener("change", manejarCambioArchivo);
+    }
+    if (inputImagenFile) {
+        inputImagenFile.addEventListener("change", manejarCambioArchivo);
     }
 });
 
@@ -475,6 +563,7 @@ function actualizarPreview() {
     const stock = Number(document.getElementById("f-stock")?.value || 0);
     const destacado = document.getElementById("f-destacado")?.value;
     const img = document.getElementById("f-imagen")?.value;
+    const inputImagenPrincipal = document.getElementById("f-imagen-principal");
     const inputImagenFile = document.getElementById("f-imagen-file");
 
     // 2. Actualizar textos básicos
@@ -517,7 +606,9 @@ function actualizarPreview() {
     // 6. Actualizar Imagen en vista previa apuntando al Bucket
     const prevImg = document.getElementById("preview-img");
     if (prevImg) {
-        if (inputImagenFile && inputImagenFile.files && inputImagenFile.files.length > 0) {
+        if (inputImagenPrincipal && inputImagenPrincipal.files && inputImagenPrincipal.files.length > 0) {
+            prevImg.src = URL.createObjectURL(inputImagenPrincipal.files[0]);
+        } else if (inputImagenFile && inputImagenFile.files && inputImagenFile.files.length > 0) {
             prevImg.src = URL.createObjectURL(inputImagenFile.files[0]);
         } else if (img && img.trim() !== "") {
             const primeraUrl = img.split(",")[0].trim();
