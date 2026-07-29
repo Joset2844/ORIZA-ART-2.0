@@ -5,17 +5,28 @@
 let productos = [];
 let categoriaActual = "todos";
 
+function escapeHTML(str = "") {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 function mostrarProductos(categoria = "todos", texto = "") {
     const contenedor = document.getElementById("lista-productos");
     const selectOrden = document.getElementById("selectOrden");
 
     if (!contenedor) return;
 
+    const catFiltro = categoria.toLowerCase().trim();
+    const textoFiltro = (texto || "").toLowerCase().trim();
+
     // Filtrar productos
     let filtrados = productos.filter(producto => {
         let coincideCategoria = false;
         const catProd = (producto.categoria || "").toLowerCase().trim();
-        const catFiltro = categoria.toLowerCase().trim();
 
         if (catFiltro === "favoritos") {
             coincideCategoria = typeof esFavorito === "function" ? esFavorito(producto.id) : false;
@@ -25,30 +36,45 @@ function mostrarProductos(categoria = "todos", texto = "") {
             coincideCategoria = catProd.includes(catFiltro) || catFiltro.includes(catProd);
         }
 
-        const coincideTexto = (producto.nombre || "").toLowerCase().includes((texto || "").toLowerCase());
+        const coincideTexto = (producto.nombre || "").toLowerCase().includes(textoFiltro);
         return coincideCategoria && coincideTexto;
     });
 
-    // Ordenar productos (Validación segura de selectOrden)
+    // Ordenar productos
     const criterioOrden = selectOrden ? selectOrden.value : "relevantes";
     filtrados.sort((a, b) => {
-        if (criterioOrden === "precio-asc") return a.precio - b.precio;
-        if (criterioOrden === "precio-desc") return b.precio - a.precio;
+        if (criterioOrden === "precio-asc") return Number(a.precio) - Number(b.precio);
+        if (criterioOrden === "precio-desc") return Number(b.precio) - Number(a.precio);
         if (a.agotado !== b.agotado) return a.agotado ? 1 : -1;
         if (a.destacado !== b.destacado) return b.destacado ? 1 : -1;
-        return a.id - b.id;
+        return Number(a.id) - Number(b.id);
     });
 
-    // Construir HTML de las tarjetas
+    contenedor.innerHTML = "";
+
+    if (filtrados.length === 0) {
+        contenedor.innerHTML = `
+            <div style="text-align:center; grid-column: 1/-1; padding: 40px 20px;">
+                <p>${categoria === "favoritos" ? "Aún no has guardado productos favoritos. ❤️" : "No se encontraron productos."}</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Construir HTML con DocumentFragment para minimizar re-flows del DOM
     const fragment = document.createDocumentFragment();
 
     filtrados.forEach(producto => {
         const esFav = typeof esFavorito === "function" ? esFavorito(producto.id) : false;
         const article = document.createElement("article");
         article.className = "card-producto" + (producto.agotado ? " agotado" : "");
+        
+        const fallbackImg = typeof IMAGEN_DEFAULT_BUCKET !== "undefined" ? IMAGEN_DEFAULT_BUCKET : "";
+
         article.innerHTML = `
             <div class="card-imagen-wrap">
                 <button 
+                    type="button"
                     class="btn-favorito-card ${esFav ? "activo" : ""}" 
                     data-id="${producto.id}"
                     title="${esFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}"
@@ -56,40 +82,44 @@ function mostrarProductos(categoria = "todos", texto = "") {
                     ${esFav ? '❤️' : '🤍'}
                 </button>
                 <img 
-                    src="${producto.imagen}" 
-                    alt="${producto.nombre}" 
+                    src="${escapeHTML(producto.imagen)}" 
+                    alt="${escapeHTML(producto.nombre)}" 
                     loading="lazy"
                     decoding="async"
-                    onerror="this.onerror=null; this.src='${typeof IMAGEN_DEFAULT_BUCKET !== 'undefined' ? IMAGEN_DEFAULT_BUCKET : ''}';"
+                    width="300"
+                    height="300"
+                    onerror="this.onerror=null; this.src='${fallbackImg}';"
                 >
                 ${producto.agotado
                     ? '<span class="badge-agotado">Agotado</span>'
                     : (producto.stock <= 3 ? `<span class="badge-stock">¡Últimas ${producto.stock}!</span>` : "")}
             </div>
             <div class="card-info">
-                <span class="categoria">${producto.categoria}</span>
-                <h3>${producto.nombre}</h3>
-                <p>${producto.descripcion}</p>
+                <span class="categoria">${escapeHTML(producto.categoria)}</span>
+                <h3>${escapeHTML(producto.nombre)}</h3>
+                <p>${escapeHTML(producto.descripcion)}</p>
                 <span class="card-precio">S/ ${Number(producto.precio).toFixed(2)}</span>
                 <div class="card-acciones">
                     <a href="producto.html?id=${producto.id}" class="btn-producto">
                         Ver detalles
                     </a>
                     <button 
+                        type="button"
                         class="btn-compartir-card" 
-                        data-nombre="${producto.nombre}"
-                        data-desc="${producto.descripcion}"
+                        data-nombre="${escapeHTML(producto.nombre)}"
+                        data-desc="${escapeHTML(producto.descripcion)}"
                         data-id="${producto.id}"
                         title="Compartir producto"
                     >
                         🔗
                     </button>
                     <button
+                        type="button"
                         class="btn-agregar-carrito"
                         data-id="${producto.id}"
-                        data-nombre="${producto.nombre}"
+                        data-nombre="${escapeHTML(producto.nombre)}"
                         data-precio="${producto.precio}"
-                        data-imagen="${producto.imagen}"
+                        data-imagen="${escapeHTML(producto.imagen)}"
                         data-stock="${producto.stock}"
                         data-agotado="${producto.agotado}"
                         ${producto.agotado ? "disabled" : ""}
@@ -102,17 +132,7 @@ function mostrarProductos(categoria = "todos", texto = "") {
         fragment.appendChild(article);
     });
 
-    contenedor.innerHTML = "";
-
-    if (filtrados.length === 0) {
-        contenedor.innerHTML = `
-            <div style="text-align:center; grid-column: 1/-1; padding: 40px 20px;">
-                <p>${categoria === "favoritos" ? "Aún no has guardado productos favoritos. ❤️" : "No se encontraron productos."}</p>
-            </div>
-        `;
-    } else {
-        contenedor.appendChild(fragment);
-    }
+    contenedor.appendChild(fragment);
 
     requestAnimationFrame(() => {
         contenedor.classList.add("cargado");
@@ -124,11 +144,18 @@ async function iniciarCatalogo() {
     sessionStorage.removeItem("oriza_productos_cache");
     if (typeof cargarProductos === "function") {
         productos = await cargarProductos();
-        console.log("Productos cargados:", productos); // Para verificar en la consola de F12
     }
     const buscador = document.getElementById("buscarProducto");
     mostrarProductos(categoriaActual, buscador ? buscador.value : "");
 }
+
+// Escucha de Evento Global de Actualización del Carrito
+window.addEventListener("cart:updated", () => {
+    if (categoriaActual === "favoritos") {
+        const buscador = document.getElementById("buscarProducto");
+        mostrarProductos("favoritos", buscador ? buscador.value : "");
+    }
+});
 
 // Asignación segura de eventos tras cargar el DOM
 document.addEventListener("DOMContentLoaded", () => {
@@ -141,28 +168,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnVistaList = document.getElementById("btnVistaList");
 
     if (contenedor) {
-    contenedor.addEventListener("click", (e) => {
-        const btnFav = e.target.closest(".btn-favorito-card");
-        if (btnFav) {
-            e.stopPropagation();
-            const id = btnFav.dataset.id;
-            
-            // Alternar en LocalStorage
-            const ahoraEsFav = toggleFavorito(id);
-            
-            // Actualizar interfaz visual
-            btnFav.classList.toggle("activo", ahoraEsFav);
-            btnFav.innerHTML = ahoraEsFav ? '❤️' : '🤍';
-            btnFav.title = ahoraEsFav ? 'Quitar de favoritos' : 'Agregar a favoritos';
+        contenedor.addEventListener("click", (e) => {
+            const btnFav = e.target.closest(".btn-favorito-card");
+            if (btnFav) {
+                e.stopPropagation();
+                const id = btnFav.dataset.id;
+                
+                if (typeof toggleFavorito === "function") {
+                    const ahoraEsFav = toggleFavorito(id);
+                    btnFav.classList.toggle("activo", ahoraEsFav);
+                    btnFav.innerHTML = ahoraEsFav ? '❤️' : '🤍';
+                    btnFav.title = ahoraEsFav ? 'Quitar de favoritos' : 'Agregar a favoritos';
 
-            // Si el usuario está parado en la pestaña "Mis Favoritos", refrescar lista
-            if (typeof categoriaActual !== "undefined" && categoriaActual === "favoritos") {
-                const buscador = document.getElementById("buscarProducto");
-                mostrarProductos("favoritos", buscador ? buscador.value : "");
+                    if (categoriaActual === "favoritos") {
+                        mostrarProductos("favoritos", buscador ? buscador.value : "");
+                    }
+                }
             }
-        }
-    });
-}
+        });
+    }
 
     // Filtros por Categoría
     document.querySelectorAll(".filtro").forEach(boton => {

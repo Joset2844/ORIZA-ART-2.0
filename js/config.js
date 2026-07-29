@@ -15,3 +15,8 @@ const IMAGEN_DEFAULT_BUCKET = `${SUPABASE_STORAGE_URL}/no-image.webp`;
 
 // Inicialización global del cliente de Supabase
 const supabaseClient = window.supabase ? window.supabase.createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey) : null;
+
+// Se expone explícitamente en window: una variable declarada con const/let
+// en un script normal NO se agrega automáticamente a window, así que sin esta
+// línea, otros archivos que chequean "window.supabaseClient" nunca lo detectan.
+window.supabaseClient = supabaseClient;

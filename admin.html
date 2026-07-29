@@ -247,7 +247,7 @@
   const SUPABASE_URL = "https://ltzfnsrxkkyuupwyykem.supabase.co"; // Tu URL de Supabase
   const SUPABASE_KEY = "sb_publishable_u-VnItuSvVJ8UiyyFtMlLQ_kSqVYKdp";              // Tu Anon Key de Supabase
 
-  if (typeof supabaseClient === "undefined") {
+  if (!window.supabaseClient) {
       window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   }
 </script>

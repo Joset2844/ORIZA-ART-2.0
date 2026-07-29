@@ -1,5 +1,5 @@
 // ===============================
-// CARRITO ORIZA ART
+// CARRITO ORIZA ART (EVENT-DRIVEN)
 // ===============================
 
 const CARRITO_KEY = "orizaCarrito";
@@ -11,14 +11,23 @@ try { carrito = JSON.parse(localStorage.getItem(CARRITO_KEY)) || []; } catch (e)
 let clienteGuardado = {};
 try { clienteGuardado = JSON.parse(localStorage.getItem(CLIENTE_KEY)) || {}; } catch (e) { clienteGuardado = {}; }
 
+function escapeHTML(str = "") {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 function guardarCarrito() {
     localStorage.setItem(CARRITO_KEY, JSON.stringify(carrito));
-    actualizarContador();
-    renderizarCarrito();
+    
+    // Notificar al resto del sistema vía evento desacoplado
+    window.dispatchEvent(new CustomEvent("cart:updated", { detail: { carrito } }));
 }
 
 function agregarProducto(producto) {
-
     if (producto.agotado) {
         alert("Este producto está agotado por ahora 😔");
         return;
@@ -37,7 +46,7 @@ function agregarProducto(producto) {
         carrito.push({
             id: producto.id,
             nombre: producto.nombre,
-            precio: producto.precio,
+            precio: Number(producto.precio),
             imagen: producto.imagen,
             stock: stockMax,
             cantidad: 1
@@ -55,7 +64,6 @@ function quitarProducto(id) {
 }
 
 function cambiarCantidad(id, delta) {
-
     const item = carrito.find(p => p.id === id);
     if (!item) return;
 
@@ -82,7 +90,7 @@ function vaciarCarrito() {
 }
 
 function calcularTotal() {
-    return carrito.reduce((s, p) => s + p.precio * p.cantidad, 0);
+    return carrito.reduce((s, p) => s + (p.precio * p.cantidad), 0);
 }
 
 function actualizarContador() {
@@ -94,12 +102,10 @@ function actualizarContador() {
 }
 
 function renderizarCarrito() {
-
     const lista = document.getElementById("carrito-lista");
     if (!lista) return;
 
     if (!carrito.length) {
-
         lista.innerHTML = `
             <div class="carrito-vacio">
                 <span>🛒</span>
@@ -107,9 +113,7 @@ function renderizarCarrito() {
                 <a href="catalogo.html" class="btn">Ver colección</a>
             </div>
         `;
-
     } else {
-
         const fragment = document.createDocumentFragment();
 
         carrito.forEach(item => {
@@ -117,31 +121,29 @@ function renderizarCarrito() {
             const div = document.createElement("div");
             div.className = "carrito-item";
             div.innerHTML = `
-                <img src="${item.imagen}" alt="${item.nombre}">
+                <img src="${escapeHTML(item.imagen)}" alt="${escapeHTML(item.nombre)}" width="60" height="60" loading="lazy">
                 <div class="carrito-item-info">
-                    <h4>${item.nombre}</h4>
+                    <h4>${escapeHTML(item.nombre)}</h4>
                     <span class="carrito-item-precio">S/ ${item.precio.toFixed(2)}</span>
                     <div class="carrito-item-cantidad">
-                        <button class="cantidad-btn" data-accion="restar" data-id="${item.id}" aria-label="Restar">−</button>
+                        <button type="button" class="cantidad-btn" data-accion="restar" data-id="${item.id}" aria-label="Restar">−</button>
                         <span>${item.cantidad}</span>
-                        <button class="cantidad-btn" data-accion="sumar" data-id="${item.id}" aria-label="Sumar" ${limite ? "disabled" : ""}>+</button>
+                        <button type="button" class="cantidad-btn" data-accion="sumar" data-id="${item.id}" aria-label="Sumar" ${limite ? "disabled" : ""}>+</button>
                     </div>
                     ${limite ? `<span class="carrito-item-limite">Máximo disponible</span>` : ""}
                 </div>
-                <button class="carrito-item-quitar" data-id="${item.id}" aria-label="Quitar producto">✕</button>
+                <button type="button" class="carrito-item-quitar" data-id="${item.id}" aria-label="Quitar producto">✕</button>
             `;
             fragment.appendChild(div);
         });
 
         lista.innerHTML = "";
         lista.appendChild(fragment);
-
     }
 
     document.querySelectorAll("#carrito-total, #carrito-total-2").forEach(el => {
         el.textContent = `S/ ${calcularTotal().toFixed(2)}`;
     });
-
 }
 
 /*=========================
@@ -165,7 +167,6 @@ function mostrarVistaCheckout() {
 }
 
 function renderizarFormularioCheckout() {
-
     const cont = document.getElementById("carrito-checkout");
     if (!cont) return;
 
@@ -174,7 +175,7 @@ function renderizarFormularioCheckout() {
     cont.innerHTML = `
         <label class="campo">
             <span>Nombre completo *</span>
-            <input type="text" id="cf-nombre" value="${c.nombre || ""}" placeholder="Ej. María Torres">
+            <input type="text" id="cf-nombre" value="${escapeHTML(c.nombre || "")}" placeholder="Ej. María Torres">
         </label>
 
         <span class="campo-label">Tipo de entrega *</span>
@@ -192,15 +193,15 @@ function renderizarFormularioCheckout() {
         <div id="cf-direccion-campos">
             <label class="campo">
                 <span>Distrito *</span>
-                <input type="text" id="cf-distrito" value="${c.distrito || ""}" placeholder="Ej. Miraflores">
+                <input type="text" id="cf-distrito" value="${escapeHTML(c.distrito || "")}" placeholder="Ej. Miraflores">
             </label>
             <label class="campo">
                 <span>Dirección *</span>
-                <input type="text" id="cf-direccion" value="${c.direccion || ""}" placeholder="Calle, número">
+                <input type="text" id="cf-direccion" value="${escapeHTML(c.direccion || "")}" placeholder="Calle, número">
             </label>
             <label class="campo">
                 <span>Referencia</span>
-                <input type="text" id="cf-referencia" value="${c.referencia || ""}" placeholder="Ej. frente al parque">
+                <input type="text" id="cf-referencia" value="${escapeHTML(c.referencia || "")}" placeholder="Ej. frente al parque">
             </label>
         </div>
 
@@ -216,7 +217,7 @@ function renderizarFormularioCheckout() {
 
         <label class="campo">
             <span>Comentario adicional</span>
-            <textarea id="cf-comentario" rows="2" placeholder="Opcional">${c.comentario || ""}</textarea>
+            <textarea id="cf-comentario" rows="2" placeholder="Opcional">${escapeHTML(c.comentario || "")}</textarea>
         </label>
 
         <p id="cf-error" class="cf-error" hidden></p>
@@ -227,11 +228,9 @@ function renderizarFormularioCheckout() {
     cont.querySelectorAll('input[name="cf-entrega"]').forEach(radio => {
         radio.addEventListener("change", actualizarEntregaUI);
     });
-
 }
 
 function actualizarEntregaUI() {
-
     document.querySelectorAll('input[name="cf-entrega"]').forEach(r => {
         r.closest(".opcion-entrega")?.classList.toggle("seleccionada", r.checked);
     });
@@ -239,7 +238,6 @@ function actualizarEntregaUI() {
     const esDelivery = document.querySelector('input[name="cf-entrega"]:checked')?.value !== "recojo";
     const campos = document.getElementById("cf-direccion-campos");
     if (campos) campos.style.display = esDelivery ? "flex" : "none";
-
 }
 
 /*=========================
@@ -247,9 +245,7 @@ function actualizarEntregaUI() {
 ==========================*/
 
 function generarLinkWhatsApp(datos) {
-
     const numero = (typeof CONFIG !== "undefined" && CONFIG.whatsapp) || "";
-
     let mensaje = `¡Hola! Soy ${datos.nombre} y quiero hacer este pedido:\n\n`;
 
     carrito.forEach(item => {
@@ -266,16 +262,13 @@ function generarLinkWhatsApp(datos) {
     }
 
     mensaje += `Pago preferido: ${datos.pago}\n`;
-
     if (datos.comentario) mensaje += `\nComentario: ${datos.comentario}\n`;
-
     mensaje += "\n¿Podrías confirmarme disponibilidad y tiempo de entrega?";
 
     return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 }
 
 async function confirmarPedido() {
-
     const nombre = document.getElementById("cf-nombre")?.value.trim();
     const entrega = document.querySelector('input[name="cf-entrega"]:checked')?.value || "delivery";
     const distrito = document.getElementById("cf-distrito")?.value.trim();
@@ -303,50 +296,47 @@ async function confirmarPedido() {
         btnEnviar.textContent = "Verificando disponibilidad...";
     }
 
-    // Revalidamos el stock contra el sheet real, por si algo se
-    // agotó mientras el cliente armaba su pedido.
-    try {
+    // Revalidación contra el origen de productos
+    if (typeof cargarProductos === "function") {
+        try {
+            const productosActuales = await cargarProductos();
+            let huboCambios = false;
 
-        const productosActuales = await cargarProductos();
-        let huboCambios = false;
+            carrito = carrito
+                .map(item => {
+                    const actual = productosActuales.find(p => p.id === item.id);
+                    if (!actual || actual.agotado) {
+                        huboCambios = true;
+                        return null;
+                    }
+                    if (item.cantidad > actual.stock) {
+                        huboCambios = true;
+                        return { ...item, cantidad: actual.stock, stock: actual.stock };
+                    }
+                    return item;
+                })
+                .filter(Boolean);
 
-        carrito = carrito
-            .map(item => {
-                const actual = productosActuales.find(p => p.id === item.id);
-                if (!actual || actual.agotado) {
-                    huboCambios = true;
-                    return null;
+            if (huboCambios) {
+                guardarCarrito();
+
+                if (btnEnviar) {
+                    btnEnviar.disabled = false;
+                    btnEnviar.textContent = textoOriginal;
                 }
-                if (item.cantidad > actual.stock) {
-                    huboCambios = true;
-                    return { ...item, cantidad: actual.stock, stock: actual.stock };
+
+                if (!carrito.length) {
+                    alert("Uno de tus productos ya no está disponible. Tu carrito quedó vacío.");
+                } else {
+                    alert("Algunas cantidades se ajustaron por cambios en el stock disponible.");
                 }
-                return item;
-            })
-            .filter(Boolean);
 
-        if (huboCambios) {
-
-            guardarCarrito();
-
-            if (btnEnviar) {
-                btnEnviar.disabled = false;
-                btnEnviar.textContent = textoOriginal;
+                mostrarVistaLista();
+                return;
             }
-
-            if (!carrito.length) {
-                alert("Uno de tus productos ya no está disponible. Tu carrito quedó vacío, revisa la colección.");
-            } else {
-                alert("Algunas cantidades se ajustaron porque el stock cambió. Revisa tu pedido antes de enviarlo.");
-            }
-
-            mostrarVistaLista();
-            return;
+        } catch (error) {
+            console.error("Error al revalidar el stock:", error);
         }
-
-    } catch (error) {
-        console.error("No se pudo revalidar el stock:", error);
-        // Preferimos dejar enviar el pedido a bloquear todo por un error de red puntual.
     }
 
     if (btnEnviar) {
@@ -364,11 +354,10 @@ async function confirmarPedido() {
     guardarCarrito();
     mostrarVistaLista();
     cerrarCarrito();
-
 }
 
 /*=========================
-  ABRIR / CERRAR PANEL
+  PANEL Y EVENT LISTENERS
 ==========================*/
 
 function abrirCarrito() {
@@ -383,8 +372,13 @@ function cerrarCarrito() {
     document.body.classList.remove("carrito-bloqueo-scroll");
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+// Reacción automática ante cambios en el carrito (Pub-Sub)
+window.addEventListener("cart:updated", () => {
+    actualizarContador();
+    renderizarCarrito();
+});
 
+document.addEventListener("DOMContentLoaded", () => {
     actualizarContador();
     renderizarCarrito();
     mostrarVistaLista();
@@ -402,7 +396,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.getElementById("carrito-lista")?.addEventListener("click", (e) => {
-
         const btnCantidad = e.target.closest(".cantidad-btn");
         if (btnCantidad) {
             const id = Number(btnCantidad.dataset.id);
@@ -413,11 +406,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const btnQuitar = e.target.closest(".carrito-item-quitar");
         if (btnQuitar) quitarProducto(Number(btnQuitar.dataset.id));
-
     });
 
     document.getElementById("lista-productos")?.addEventListener("click", (e) => {
-
         const btnAgregar = e.target.closest(".btn-agregar-carrito");
         if (!btnAgregar || btnAgregar.disabled) return;
 
@@ -429,7 +420,5 @@ document.addEventListener("DOMContentLoaded", () => {
             stock: Number(btnAgregar.dataset.stock),
             agotado: btnAgregar.dataset.agotado === "true"
         });
-
     });
-
 });

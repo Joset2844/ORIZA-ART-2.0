@@ -1,0 +1,47 @@
+{
+  "js/admin.js": {
+    "mtime": 1785357543.8047261,
+    "ast_hash": "3784371276d407ddba044b3a0fe51adc",
+    "semantic_hash": "3784371276d407ddba044b3a0fe51adc"
+  },
+  "js/api.js": {
+    "mtime": 1785344771.2116392,
+    "ast_hash": "b3a5b301b3b474277b1f83e614dafbc6",
+    "semantic_hash": "b3a5b301b3b474277b1f83e614dafbc6"
+  },
+  "js/carrito.js": {
+    "mtime": 1785007977.0,
+    "ast_hash": "ab48a1d83b5dbf9a343382fd88504425",
+    "semantic_hash": "ab48a1d83b5dbf9a343382fd88504425"
+  },
+  "js/catalogo.js": {
+    "mtime": 1785346790.572915,
+    "ast_hash": "5a6b5a6da4d7a652ed39e5044668816e",
+    "semantic_hash": "5a6b5a6da4d7a652ed39e5044668816e"
+  },
+  "js/config.js": {
+    "mtime": 1785344771.2116392,
+    "ast_hash": "20189731d507687c0686a1caed581ba0",
+    "semantic_hash": "20189731d507687c0686a1caed581ba0"
+  },
+  "js/global.js": {
+    "mtime": 1785349282.4855063,
+    "ast_hash": "44d8f4284710fdb83b109a1571771979",
+    "semantic_hash": "44d8f4284710fdb83b109a1571771979"
+  },
+  "js/main.js": {
+    "mtime": 1785007959.0,
+    "ast_hash": "5085e54ee99506640028882b0bdcd073",
+    "semantic_hash": "5085e54ee99506640028882b0bdcd073"
+  },
+  "js/producto.js": {
+    "mtime": 1785347182.9094436,
+    "ast_hash": "40fa28a7643a401784e6f61f6a414d48",
+    "semantic_hash": "40fa28a7643a401784e6f61f6a414d48"
+  },
+  "sw.js": {
+    "mtime": 1785198274.4776435,
+    "ast_hash": "59764437c99540f62744d9d199f84b34",
+    "semantic_hash": "59764437c99540f62744d9d199f84b34"
+  }
+}
