@@ -45,18 +45,38 @@ async function iniciarProducto() {
         document.title = `${producto.nombre} | ORIZA ART`;
 
         // 1. Manejo seguro de imágenes
+        // IMPORTANTE: producto.imagen puede traer varias imágenes separadas por comas
+        // (URLs completas o solo nombres de archivo). Siempre separamos primero por
+        // coma y luego resolvemos cada una individualmente, para no romper la galería
+        // cuando se reordena la imagen principal desde el admin.
         let fotos = [];
-        if (producto.imagen && producto.imagen.startsWith("http")) {
-            fotos = producto.imagen.split(",").map(url => url.trim()).filter(Boolean);
-        } else if (producto.imagen && !producto.imagen.includes("no-image")) {
-            const nombreLimpio = producto.imagen.replace(/^img\//, '');
-            const baseNombre = nombreLimpio.replace(/\.webp$/i, "");
-            const storageBase = typeof SUPABASE_STORAGE_URL !== 'undefined' ? SUPABASE_STORAGE_URL : '';
-            fotos.push(`${storageBase}/${baseNombre}.webp`);
-            for (let i = 2; i <= 5; i++) {
-                fotos.push(`${storageBase}/${baseNombre}-${i}.webp`);
+        const storageBase = typeof SUPABASE_STORAGE_URL !== 'undefined' ? SUPABASE_STORAGE_URL : '';
+
+        if (producto.imagen && !producto.imagen.includes("no-image")) {
+            const entradas = producto.imagen.split(",").map(e => e.trim()).filter(Boolean);
+
+            if (entradas.length > 0 && entradas.every(e => e.startsWith("http"))) {
+                // Formato nuevo/normal: ya son URLs completas
+                fotos = entradas;
+            } else if (entradas.length > 1) {
+                // Formato legado: varios nombres de archivo sueltos, cada uno se resuelve por separado
+                fotos = entradas.map(nombre => {
+                    if (nombre.startsWith("http")) return nombre;
+                    const nombreLimpio = nombre.replace(/^img\//, '');
+                    return `${storageBase}/${nombreLimpio}`;
+                });
+            } else if (entradas.length === 1) {
+                // Formato legado muy antiguo: solo el ID base, generamos el patrón ID.webp, ID-2.webp...
+                const nombreLimpio = entradas[0].replace(/^img\//, '');
+                const baseNombre = nombreLimpio.replace(/\.webp$/i, "");
+                fotos.push(`${storageBase}/${baseNombre}.webp`);
+                for (let i = 2; i <= 5; i++) {
+                    fotos.push(`${storageBase}/${baseNombre}-${i}.webp`);
+                }
             }
-        } else {
+        }
+
+        if (fotos.length === 0) {
             fotos.push(typeof IMAGEN_DEFAULT_BUCKET !== 'undefined' ? IMAGEN_DEFAULT_BUCKET : '');
         }
 

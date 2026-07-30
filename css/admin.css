@@ -1120,3 +1120,129 @@ grid-template-columns:1fr;
     background: #25D366;
     color: white;
 }
+
+.galeria-bucket-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 6px;
+    padding: 8px;
+    background: #f9f9f9;
+    border: 1px dashed #ccc;
+    border-radius: 6px;
+    min-height: 60px;
+    align-items: center;
+}
+
+.item-galeria-bucket {
+    position: relative;
+    width: 65px;
+    height: 65px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.item-galeria-bucket img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.btn-eliminar-foto {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(255, 0, 0, 0.85);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.btn-eliminar-foto:hover {
+    background: red;
+}
+
+.galeria-bucket-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 6px;
+    padding: 10px;
+    background: #f9f9f9;
+    border: 1px dashed #d8c4b6;
+    border-radius: 10px;
+    min-height: 80px;
+    align-items: center;
+}
+
+.item-galeria-bucket {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #ddd;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+.item-galeria-bucket.es-principal {
+    border-color: #6F4E37;
+    box-shadow: 0 0 8px rgba(111, 78, 55, 0.4);
+}
+
+.item-galeria-bucket img {
+    width: 100%;
+    height: 60px;
+    object-fit: cover;
+}
+
+.badge-orden {
+    font-size: 9px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    text-align: center;
+    padding: 2px 0;
+    font-weight: bold;
+}
+
+.acciones-miniatura {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: flex;
+    gap: 2px;
+}
+
+.acciones-miniatura button {
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.acciones-miniatura button:hover {
+    background: #fff;
+}
+
+.btn-eliminar-foto-bucket {
+    color: red;
+    font-weight: bold;
+}
