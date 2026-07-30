@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#6F4E37">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ORIZA Admin">
+
+<link rel="manifest" href="/admin-manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="icon" href="/favicon.ico">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>Admin móvil | ORIZA ART</title>
+
+<style>
+  :root {
+    --marron: #6F4E37;
+    --marron-oscuro: #543a29;
+    --crema: #f5f0ea;
+    --borde: #e2d9cf;
+    --texto: #2b2420;
+    --rojo: #c0392b;
+    --verde: #2e7d32;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--crema);
+    color: var(--texto);
+    font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button { font-family: inherit; }
+  input, select, textarea { font-family: inherit; font-size: 16px; } /* 16px evita zoom automático en iOS */
+
+  /* ---------- LOGIN ---------- */
+  .login-vista {
+    min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .login-form {
+    width: 100%; max-width: 360px;
+    background: #fff; border-radius: 16px;
+    padding: 28px 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+  .login-form h1 { margin: 0 0 4px; color: var(--marron); font-size: 22px; }
+  .login-form p { margin: 0 0 20px; color: #8a7c6e; font-size: 14px; }
+  .login-form input {
+    width: 100%; padding: 13px 14px; margin-bottom: 12px;
+    border: 1px solid var(--borde); border-radius: 10px; background: var(--crema);
+  }
+  .login-form button {
+    width: 100%; padding: 13px; border: none; border-radius: 10px;
+    background: var(--marron); color: #fff; font-weight: 600; font-size: 15px;
+  }
+  .login-error { color: var(--rojo); font-size: 13px; margin-top: 8px; }
+
+  /* ---------- LOADER ---------- */
+  #loader-vista { min-height: 100dvh; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .loader-spinner {
+    width: 36px; height: 36px; margin: 0 auto 12px;
+    border: 4px solid var(--borde); border-top-color: var(--marron);
+    border-radius: 50%; animation: girar 0.8s linear infinite;
+  }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
+  /* ---------- TOP BAR ---------- */
+  .app-header {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--marron); color: #fff;
+    padding: 14px 16px calc(14px + env(safe-area-inset-top)) 16px;
+    padding-top: max(14px, env(safe-area-inset-top));
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .app-header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .app-header button {
+    background: rgba(255,255,255,0.15); border: none; color: #fff;
+    padding: 7px 12px; border-radius: 8px; font-size: 13px;
+  }
+
+  /* ---------- BARRA DE BÚSQUEDA / FILTROS ---------- */
+  .barra-busqueda {
+    display: flex; gap: 8px; padding: 12px 16px 0;
+  }
+  .barra-busqueda input[type="text"] {
+    flex: 1; padding: 11px 14px; border: 1px solid var(--borde);
+    border-radius: 10px; background: #fff;
+  }
+  .barra-busqueda button {
+    width: 44px; border: 1px solid var(--borde); border-radius: 10px;
+    background: #fff; font-size: 16px;
+  }
+  #panel-filtros {
+    display: none; gap: 8px; padding: 10px 16px 0; flex-wrap: wrap;
+  }
+  #panel-filtros.abierto { display: flex; }
+  #panel-filtros select {
+    flex: 1; min-width: 100px; padding: 9px 10px;
+    border: 1px solid var(--borde); border-radius: 8px; background: #fff; font-size: 13px;
+  }
+
+  /* ---------- LISTA DE TARJETAS ---------- */
+  #lista-productos { padding: 12px 16px 100px; }
+  .lista-vacia { text-align: center; color: #8a7c6e; margin-top: 40px; }
+
+  .producto-card {
+    display: flex; gap: 12px;
+    background: #fff; border-radius: 14px; padding: 10px;
+    margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .producto-card.inactiva { opacity: 0.55; }
+  .producto-card-img {
+    width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex-shrink: 0;
+    background: var(--crema);
+  }
+  .producto-card-body { flex: 1; min-width: 0; }
+  .producto-card-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .producto-card-nombre { display: block; font-size: 14.5px; line-height: 1.25; }
+  .producto-card-id { display: block; color: #8a7c6e; font-size: 11.5px; margin-top: 2px; }
+
+  .chip-estado {
+    border: none; border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 600;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .chip-estado.activo { background: #e3f3e4; color: var(--verde); }
+  .chip-estado.inactivo { background: #f5e4e2; color: var(--rojo); }
+
+  .producto-card-bottom {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 8px; gap: 6px;
+  }
+  .producto-card-precio { font-weight: 700; font-size: 14px; color: var(--marron-oscuro); flex-shrink: 0; }
+
+  .stock-stepper { display: flex; align-items: center; border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
+  .stock-stepper button { width: 26px; height: 26px; border: none; background: var(--crema); font-size: 15px; }
+  .stock-stepper input {
+    width: 34px; border: none; text-align: center; font-size: 13px; -moz-appearance: textfield;
+  }
+  .stock-stepper input::-webkit-outer-spin-button,
+  .stock-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .producto-card-acciones { display: flex; gap: 4px; }
+  .icon-btn {
+    width: 30px; height: 30px; border: none; border-radius: 8px;
+    background: var(--crema); font-size: 14px;
+  }
+  .icon-btn-danger { color: var(--rojo); }
+
+  /* ---------- FAB ---------- */
+  .fab {
+    position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
+    width: 56px; height: 56px; border-radius: 50%; border: none;
+    background: var(--marron); color: #fff; font-size: 26px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3); z-index: 25;
+  }
+
+  /* ---------- FORMULARIO TIPO HOJA ---------- */
+  .form-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,0,0,0.35);
+    display: flex; align-items: flex-end;
+  }
+  .form-sheet {
+    width: 100%; max-height: 92dvh;
+    background: var(--crema);
+    border-radius: 20px 20px 0 0;
+    display: flex; flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.28s ease;
+  }
+  .form-overlay.abierto .form-sheet { transform: translateY(0); }
+
+  .form-sheet-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 16px 10px; border-bottom: 1px solid var(--borde);
+  }
+  .form-sheet-header h2 { margin: 0; font-size: 16px; }
+  .form-sheet-header button {
+    width: 30px; height: 30px; border: none; border-radius: 8px; background: #fff; font-size: 15px;
+  }
+
+  .form-sheet-body { padding: 14px 16px; overflow-y: auto; flex: 1; }
+  .form-sheet-body label { display: block; font-size: 12.5px; font-weight: 600; margin: 12px 0 5px; color: #6b5d4f; }
+  .form-sheet-body input, .form-sheet-body select, .form-sheet-body textarea {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--borde); border-radius: 10px; background: #fff;
+  }
+  .form-fila { display: flex; gap: 10px; }
+  .form-fila > div { flex: 1; }
+
+  .preview-mini {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; border-radius: 12px; padding: 10px; margin-top: 4px;
+  }
+  .preview-mini img { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; }
+  .preview-mini strong { display: block; font-size: 13px; }
+  .preview-mini span { font-size: 12px; color: var(--marron-oscuro); font-weight: 700; }
+
+  .form-sheet-footer {
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--borde); background: #fff;
+  }
+  .btn-guardar {
+    width: 100%; padding: 14px; border: none; border-radius: 12px;
+    background: var(--marron); color: #fff; font-weight: 700; font-size: 15px;
+  }
+
+  /* ---------- GALERÍA DE IMÁGENES (reordenar) ---------- */
+  #contenedor-preview-imagenes {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px;
+  }
+  .img-preview-card { background: #fff; border-radius: 10px; padding: 6px; }
+  .img-preview-thumb { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 8px; overflow: hidden; border: 2px solid var(--borde); }
+  .img-preview-card.es-principal .img-preview-thumb { border-color: var(--marron); }
+  .img-preview-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .img-preview-badge {
+    position: absolute; bottom: 0; left: 0; right: 0; text-align: center;
+    font-size: 9px; font-weight: 700; color: #fff; background: rgba(0,0,0,0.55); padding: 2px 0;
+  }
+  .img-preview-card.es-principal .img-preview-badge { background: var(--marron); }
+  .img-preview-acciones { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+  .img-preview-acciones button {
+    border: none; background: var(--crema); border-radius: 6px; padding: 4px 2px; font-size: 10px;
+  }
+  .img-preview-acciones button.danger { color: var(--rojo); }
+
+  /* ---------- TOAST ---------- */
+  #toast {
+    position: fixed; left: 16px; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom));
+    background: #2b2420; color: #fff; padding: 12px 16px; border-radius: 10px;
+    font-size: 13.5px; text-align: center; opacity: 0; pointer-events: none;
+    transform: translateY(10px); transition: all 0.25s ease; z-index: 100;
+  }
+  #toast.mostrar { opacity: 1; transform: translateY(0); }
+  #toast.error { background: var(--rojo); }
+  #toast.exito { background: var(--verde); }
+</style>
+</head>
+<body>
+
+<div id="login-vista" class="login-vista">
+  <form id="login-form" class="login-form">
+    <h1>ORIZA ART</h1>
+    <p>Panel de administración (móvil)</p>
+    <input type="text" id="login-user" placeholder="Usuario" required autofocus autocomplete="username">
+    <input type="password" id="login-password" placeholder="Contraseña" required autocomplete="current-password">
+    <button type="submit">Entrar</button>
+    <p id="login-error" class="login-error" hidden></p>
+  </form>
+</div>
+
+<div id="loader-vista" hidden>
+  <div>
+    <div class="loader-spinner"></div>
+    <h2>Cargando panel...</h2>
+    <p>Obteniendo productos desde la base de datos</p>
+  </div>
+</div>
+
+<div id="panel-vista" hidden>
+  <header class="app-header">
+    <h1>ORIZA ART · Admin</h1>
+    <button id="btn-cerrar-sesion">Salir</button>
+  </header>
+
+  <div class="barra-busqueda">
+    <input type="text" id="buscar-producto" placeholder="🔍 Buscar por nombre o ID">
+    <button type="button" id="btn-filtros" title="Filtros">⚙️</button>
+  </div>
+
+  <div id="panel-filtros">
+    <select id="filtro-tipo">
+      <option value="">Todos los tipos</option>
+      <option value="PULSERA">Pulseras</option>
+      <option value="COLLAR">Collares</option>
+    </select>
+    <select id="filtro-estado">
+      <option value="">Todos los estados</option>
+      <option value="ACTIVO">Activos</option>
+      <option value="INACTIVO">Inactivos</option>
+    </select>
+    <select id="orden-movil">
+      <option value="">Orden: por defecto</option>
+      <option value="nombre|text">Nombre A-Z</option>
+      <option value="precio|num">Precio: menor a mayor</option>
+      <option value="stock|num">Stock: menor a mayor</option>
+    </select>
+  </div>
+
+  <main id="lista-productos"></main>
+
+  <button class="fab" id="btn-nuevo" aria-label="Nuevo producto">+</button>
+</div>
+
+<!-- FORMULARIO TIPO HOJA -->
+<div id="form-overlay" class="form-overlay" hidden>
+  <form id="form-producto" class="form-sheet">
+    <div class="form-sheet-header">
+      <h2 id="form-titulo">Nuevo producto</h2>
+      <button type="button" id="form-cerrar" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="form-sheet-body">
+      <div class="preview-mini">
+        <img id="preview-img-movil" src="https://ltzfnsrxkkyuupwyykem.supabase.co/storage/v1/object/public/productos/no-image.webp" alt="">
+        <div>
+          <strong id="preview-nombre-movil">Nombre del producto</strong>
+          <span id="preview-precio-movil">S/ 0.00</span>
+        </div>
+      </div>
+
+      <label>ID (único, ej. ES-PU-003)</label>
+      <input type="text" id="f-id" style="text-transform:uppercase;" required>
+
+      <div class="form-fila">
+        <div>
+          <label>Tipo</label>
+          <select id="f-tipo">
+            <option value="PULSERA">Pulsera</option>
+            <option value="COLLAR">Collar</option>
+          </select>
+        </div>
+        <div>
+          <label>Precio (S/)</label>
+          <input type="number" id="f-precio" step="0.10" min="0" required>
+        </div>
+      </div>
+
+      <label>Nombre</label>
+      <input type="text" id="f-nombre" required>
+
+      <label>Material</label>
+      <input type="text" id="f-material" placeholder="Separado por comas">
+
+      <label>Descripción</label>
+      <textarea id="f-descripcion" rows="3"></textarea>
+
+      <label>Imágenes del producto</label>
+      <input type="file" id="inputImagenes" accept="image/*" multiple onchange="manejarSeleccionImagenes(event)">
+      <small style="color:#8a7c6e;">Toca "⭐ Principal" en la que quieras como portada.</small>
+      <div id="contenedor-preview-imagenes"></div>
+
+      <div class="form-fila">
+        <div>
+          <label>Estado</label>
+          <select id="f-estado">
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+          </select>
+        </div>
+        <div>
+          <label>Destacado</label>
+          <select id="f-destacado">
+            <option value="NO">No</option>
+            <option value="SI">Sí</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-fila">
+        <div>
+          <label>Orden</label>
+          <input type="number" id="f-orden" min="1">
+        </div>
+        <div>
+          <label>Stock</label>
+          <input type="number" id="f-stock" min="0" required>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-sheet-footer">
+      <button type="submit" class="btn-guardar">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script>
+  if (!window.supabaseClient) {
+    window.supabaseClient = supabase.createClient(
+      typeof SUPABASE_URL !== "undefined" ? SUPABASE_URL : "https://ltzfnsrxkkyuupwyykem.supabase.co",
+      typeof SUPABASE_KEY !== "undefined" ? SUPABASE_KEY : "sb_publishable_u-VnItuSvVJ8UiyyFtMlLQ_kSqVYKdp"
+    );
+  }
+</script>
+<script src="admin-movil.js"></script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/service-worker.js").catch(console.error);
+    });
+  }
+</script>
+</body>
+</html>

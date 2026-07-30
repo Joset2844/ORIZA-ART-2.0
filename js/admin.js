@@ -558,6 +558,62 @@ function abrirFormulario(producto = null) {
 
     actualizarPreview();
     overlay.hidden = false;
+
+    // 6. Además de lo que traiga la base de datos, revisamos si en el Storage
+    // ya existen archivos con este ID (ej. subidos manualmente o de una sesión anterior)
+    // y los agregamos a la galería si no están ya incluidos.
+    sincronizarImagenesConBucket();
+}
+
+// Busca en el bucket 'productos' archivos que empiecen con el ID indicado
+// (ID.webp, ID-2.webp, ID-3.webp...) y los agrega a la galería de edición
+// si todavía no están en imagenesSeleccionadas. No borra ni reemplaza nada existente.
+async function sincronizarImagenesConBucket() {
+    const id = document.getElementById("f-id")?.value.trim().toUpperCase();
+    if (!id || typeof supabaseClient === "undefined") return;
+
+    try {
+        const BUCKET_NAME = 'productos';
+        const { data: archivos, error } = await supabaseClient.storage.from(BUCKET_NAME).list('', { limit: 100, search: id });
+        if (error) throw error;
+
+        const coincidencias = (archivos || []).filter(a => {
+            const sinExt = a.name.split('.')[0].toUpperCase();
+            return sinExt === id || sinExt.startsWith(`${id}-`);
+        });
+
+        if (coincidencias.length === 0) return;
+
+        coincidencias.sort((a, b) => {
+            const aName = a.name.toUpperCase();
+            const bName = b.name.toUpperCase();
+            if (aName === `${id}.WEBP`) return -1;
+            if (bName === `${id}.WEBP`) return 1;
+            return aName.localeCompare(bName, undefined, { numeric: true });
+        });
+
+        let agregadas = 0;
+        coincidencias.forEach(archivo => {
+            const yaExiste = imagenesSeleccionadas.some(img => img.nombreTemp === archivo.name);
+            if (!yaExiste) {
+                const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(archivo.name);
+                imagenesSeleccionadas.push({
+                    blob: null,
+                    urlPreview: `${urlData.publicUrl}?v=${Date.now()}`,
+                    nombreTemp: archivo.name
+                });
+                agregadas++;
+            }
+        });
+
+        if (agregadas > 0) {
+            renderizarPrevisualizacion();
+            actualizarPreview();
+            mostrarToast(`Se encontraron ${agregadas} imagen(es) ya guardadas para "${id}"`, "info");
+        }
+    } catch (err) {
+        console.warn("No se pudo sincronizar con el bucket:", err.message);
+    }
 }
 
 function cerrarFormulario() {
@@ -793,7 +849,7 @@ async function subirImagenesTemporales(productoId, archivos) {
 
   for (let i = 0; i < archivos.length; i++) {
     // Tu función existente de conversión a WebP
-    const blobWebp = await convertirAWebp(archivos[i]);
+    const blobWebp = await convertirImagenAWebp(archivos[i]);
     
     // Nombre temporal único
     const nombreTemp = `${productoId}_temp_${Date.now()}_${i}.webp`;
@@ -882,7 +938,7 @@ async function manejarSeleccionImagenes(event) {
 
   // Convertimos a WebP y creamos URLs temporales para la vista previa
   for (const archivo of archivos) {
-    const blobWebp = await convertirAWebp(archivo); // Usa tu función existente de WebP
+    const blobWebp = await convertirImagenAWebp(archivo);
     const urlBlob = URL.createObjectURL(blobWebp);
     
     imagenesSeleccionadas.push({
@@ -1033,5 +1089,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("#form-producto input, #form-producto select, #form-producto textarea").forEach(el => {
         el.addEventListener("input", manejadorPreview);
         el.addEventListener("change", manejadorPreview);
+    });
+
+    // Al terminar de escribir el ID (ej. creando un producto nuevo), buscamos si ya
+    // existen imágenes subidas al bucket con ese ID y las incorporamos a la galería.
+    document.getElementById("f-id")?.addEventListener("blur", () => {
+        if (!editandoId) sincronizarImagenesConBucket();
     });
 });
