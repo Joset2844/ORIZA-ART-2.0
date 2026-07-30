@@ -184,6 +184,20 @@ document.addEventListener("DOMContentLoaded", () => {
                         mostrarProductos("favoritos", buscador ? buscador.value : "");
                     }
                 }
+                return;
+            }
+
+            const btnShare = e.target.closest(".btn-compartir-card");
+            if (btnShare) {
+                e.stopPropagation();
+                const { id, nombre, desc } = btnShare.dataset;
+                const urlProducto = `${window.location.origin}${window.location.pathname.replace("catalogo.html", "")}producto.html?id=${id}`;
+
+                if (typeof compartirProducto === "function") {
+                    compartirProducto(nombre, desc, urlProducto);
+                } else {
+                    console.error("❌ compartirProducto() no está disponible en global.js");
+                }
             }
         });
     }

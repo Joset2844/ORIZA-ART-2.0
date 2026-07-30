@@ -6,11 +6,28 @@ const SESSION_KEY = "orizaAdminPass";
 
 window.productosAdmin = window.productosAdmin || [];
 window.productosFiltrados = window.productosFiltrados || [];
-window.dbSchema = null;
+
+// Mapeo exacto según las columnas en MAYÚSCULAS de tu Supabase
+window.dbSchema = {
+    id: 'ID',
+    tipo: 'TIPO',
+    nombre: 'NOMBRE',
+    precio: 'PRECIO',
+    material: 'MATERIAL',
+    descripcion: 'DESCRIPCION ESPIRITUAL',
+    estado: 'ESTADO',
+    destacado: 'DESTACADO',
+    orden: 'ORDEN',
+    stock: 'STOCK',
+    imagen: 'VACIO' // O la columna donde guardes la URL de la imagen
+};
+
 let editandoId = null;
 let ordenActual = { columna: null, ascendente: true };
+let seleccionados = new Set();
+let imagenesSeleccionadas = [];
 
-// Sanitización para prevenir XSS en renders dinámicos
+// Sanitización XSS
 function escapeHTML(str = "") {
     return String(str)
         .replace(/&/g, "&amp;")
@@ -31,72 +48,125 @@ function mostrarPanel() {
     document.getElementById("panel-vista")?.removeAttribute("hidden");
 }
 
-// Emite un evento global para avisar a otras pestañas/componentes
 function notificarCambioCatalogo() {
     sessionStorage.removeItem("oriza_productos_cache");
     window.dispatchEvent(new CustomEvent("catalog:updated"));
 }
 
-// Cargar productos desde Supabase y detectar esquema dinámico
-async function recargarProductos() {
-    if (typeof supabaseClient === "undefined") {
-        console.error("supabaseClient no está inicializado.");
-        return;
-    }
+// Cargar productos desde Supabase
+let paginaActual = 1;
+const LIMITE_POR_PAGINA = 15;
+let totalProductosBD = 0;
+
+async function recargarProductos(pagina = 1) {
+    if (typeof supabaseClient === "undefined") return;
+
+    paginaActual = pagina;
+    const desde = (paginaActual - 1) * LIMITE_POR_PAGINA;
+    const hasta = desde + LIMITE_POR_PAGINA - 1;
 
     try {
-        const { data, error } = await supabaseClient.from('productos').select('*');
+        let query = supabaseClient
+            .from('productos')
+            .select('*', { count: 'exact' })
+            .range(desde, hasta);
 
-        if (error) {
-            mostrarToast("Error al cargar productos: " + error.message, "error");
-            return;
+        // Ordenamiento seguro (evitando caracteres especiales en el endpoint de Supabase)
+        if (window.dbSchema?.orden && !window.dbSchema.orden.includes('°')) {
+            query = query.order(window.dbSchema.orden, { ascending: true });
+        } else if (window.dbSchema?.id && !window.dbSchema.id.includes('°')) {
+            query = query.order(window.dbSchema.id, { ascending: true });
         }
 
-        if (data && data.length > 0 && !window.dbSchema) {
-            const row = data[0];
-            window.dbSchema = {
-                id: 'codigo' in row ? 'codigo' : ('ID' in row ? 'ID' : ('id_codigo' in row ? 'id_codigo' : 'id')),
-                nombre: 'NOMBRE' in row ? 'NOMBRE' : 'nombre',
-                tipo: 'TIPO' in row ? 'TIPO' : 'tipo',
-                precio: 'PRECIO' in row ? 'PRECIO' : 'precio',
-                stock: 'STOCK' in row ? 'STOCK' : 'stock',
-                estado: 'ESTADO' in row ? 'ESTADO' : 'estado',
-                destacado: 'DESTACADO' in row ? 'DESTACADO' : 'destacado',
-                material: 'MATERIAL' in row ? 'MATERIAL' : 'material',
-                descripcion: 'DESCRIPCION ESPIRITUAL' in row ? 'DESCRIPCION ESPIRITUAL' : 'descripcion',
-                imagen: 'VACIO' in row ? 'VACIO' : 'imagen',
-                orden: 'ORDEN' in row ? 'ORDEN' : 'orden'
-            };
-        }
+        const { data, error, count } = await query;
 
-        window.productosAdmin = (data || []).map(r => ({
-            id: r[window.dbSchema.id]?.toString() || "",
-            nombre: r[window.dbSchema.nombre]?.toString() || "",
-            tipo: r[window.dbSchema.tipo]?.toString() || "PULSERA",
-            precio: Number(r[window.dbSchema.precio] ?? 0),
-            stock: Number(r[window.dbSchema.stock] ?? 0),
-            estado: r[window.dbSchema.estado]?.toString() || "ACTIVO",
-            destacado: r[window.dbSchema.destacado]?.toString() || "NO",
-            material: r[window.dbSchema.material]?.toString() || "",
-            descripcion: r[window.dbSchema.descripcion]?.toString() || "",
-            imagen: r[window.dbSchema.imagen]?.toString() || "",
-            orden: Number(r[window.dbSchema.orden] ?? 999)
-        }));
+        if (error) throw error;
+
+        totalProductosBD = count || 0;
+
+        // Función auxiliar para buscar el valor de una clave sin importar mayúsculas/minúsculas/acentos
+        const obtenerValor = (row, ...clavesPosibles) => {
+            const keysObj = Object.keys(row);
+            for (const clave of clavesPosibles) {
+                // Busqueda exacta
+                if (row[clave] !== undefined) return row[clave];
+                // Busqueda insensible a mayúsculas/minúsculas
+                const keyEncontrada = keysObj.find(k => k.toLowerCase() === clave.toLowerCase());
+                if (keyEncontrada && row[keyEncontrada] !== undefined) return row[keyEncontrada];
+            }
+            return null;
+        };
+
+        window.productosAdmin = (data || []).map(r => {
+        const idVal = (obtenerValor(r, 'ID', 'id', 'N°') ?? "").toString();
+        const imagenVal = (obtenerValor(r, 'VACIO', 'imagen', 'IMAGEN') ?? "").toString();
+
+        // Si no hay imagen en BD, construimos la ruta estándar del bucket con el ID
+        const urlImagenFinal = imagenVal ? imagenVal : (idVal ? `${SUPABASE_STORAGE_URL}/${idVal}.webp` : '');
+
+        return {
+            id: idVal,
+            nombre: (obtenerValor(r, 'NOMBRE', 'nombre') ?? "").toString(),
+            tipo: (obtenerValor(r, 'TIPO', 'tipo') ?? "PULSERA").toString(),
+            precio: Number(obtenerValor(r, 'PRECIO', 'precio') ?? 0),
+            stock: Number(obtenerValor(r, 'STOCK', 'stock') ?? 0),
+            estado: (obtenerValor(r, 'ESTADO', 'estado') ?? "ACTIVO").toString(),
+            destacado: (obtenerValor(r, 'DESTACADO', 'destacado') ?? "NO").toString(),
+            material: (obtenerValor(r, 'MATERIAL', 'material') ?? "").toString(),
+            descripcion: (obtenerValor(r, 'DESCRIPCION ESPIRITUAL', 'descripcion') ?? "").toString(),
+            imagen: urlImagenFinal,
+            orden: Number(obtenerValor(r, 'ORDEN', 'orden') ?? 999)
+        };
+        });
 
         window.productosFiltrados = [...window.productosAdmin];
-        aplicarFiltros(false);
+        actualizarKPIs();
+        renderizarTabla();
+        renderizarPaginador();
     } catch (e) {
-        console.error("Excepción en recargarProductos:", e);
+        mostrarToast("Error al cargar página: " + e.message, "error");
     }
 }
 
-// Renderizar tabla utilizando DocumentFragment para máximo rendimiento
+function renderizarPaginador() {
+    const totalPaginas = Math.ceil(totalProductosBD / LIMITE_POR_PAGINA);
+    let paginadorEl = document.getElementById("paginador-tabla");
+
+    if (!paginadorEl) {
+        paginadorEl = document.createElement("div");
+        paginadorEl.id = "paginador-tabla";
+        paginadorEl.className = "paginador-container";
+        document.querySelector(".tabla-wrap").after(paginadorEl);
+    }
+
+    paginadorEl.innerHTML = `
+        <button ${paginaActual === 1 ? 'disabled' : ''} onclick="recargarProductos(${paginaActual - 1})">❮ Anterior</button>
+        <span>Página <strong>${paginaActual}</strong> de ${totalPaginas || 1}</span>
+        <button ${paginaActual >= totalPaginas ? 'disabled' : ''} onclick="recargarProductos(${paginaActual + 1})">Siguiente ❯</button>
+    `;
+}
+
+// Actualización de Métricas KPIs
+function actualizarKPIs() {
+    const total = window.productosAdmin.length;
+    const bajoStock = window.productosAdmin.filter(p => p.stock <= 3).length;
+    const destacados = window.productosAdmin.filter(p => (p.destacado || "").toUpperCase() === "SI").length;
+    const valorInventario = window.productosAdmin.reduce((sum, p) => sum + (p.precio * p.stock), 0);
+
+    if (document.getElementById("kpi-total-productos")) document.getElementById("kpi-total-productos").textContent = total;
+    if (document.getElementById("kpi-bajo-stock")) document.getElementById("kpi-bajo-stock").textContent = bajoStock;
+    if (document.getElementById("kpi-destacados")) document.getElementById("kpi-destacados").textContent = destacados;
+    if (document.getElementById("kpi-valor-inventario")) document.getElementById("kpi-valor-inventario").textContent = `S/ ${valorInventario.toFixed(2)}`;
+}
+
+// Renderizado optimizado de la tabla
 function renderizarTabla() {
     const tbody = document.getElementById("tabla-productos");
     if (!tbody) return;
 
     if (!window.productosFiltrados.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="tabla-vacia">No hay productos registrados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="tabla-vacia">No hay productos registrados.</td></tr>`;
+        actualizarBarraLote();
         return;
     }
 
@@ -104,7 +174,7 @@ function renderizarTabla() {
 
     window.productosFiltrados.forEach(p => {
         const activo = (p.estado || "").toLowerCase() === "activo";
-        const defaultBucket = typeof IMAGEN_DEFAULT_BUCKET !== "undefined" ? IMAGEN_DEFAULT_BUCKET : "";
+        const defaultBucket = typeof SUPABASE_STORAGE_URL !== "undefined" ? `${SUPABASE_STORAGE_URL}/no-image.webp` : "";
         
         let fotoTabla = defaultBucket;
         if (p.imagen && p.imagen.startsWith("http")) {
@@ -116,19 +186,32 @@ function renderizarTabla() {
         const tr = document.createElement("tr");
         if (!activo) tr.className = "fila-inactiva";
 
+        const estaSeleccionado = seleccionados.has(p.id);
+
         tr.innerHTML = `
+            <td style="text-align: center;">
+                <input type="checkbox" class="check-producto" data-id="${escapeHTML(p.id)}" ${estaSeleccionado ? "checked" : ""}>
+            </td>
             <td>${escapeHTML(p.id)}</td>
             <td>
                 <div class="producto-admin">
-                    <img src="${escapeHTML(fotoTabla)}" loading="lazy" onerror="this.onerror=null; this.src='${escapeHTML(defaultBucket)}';">
+                    <img src="${escapeHTML(fotoTabla)}" loading="lazy">
                     <div>
-                        <strong>${escapeHTML(p.nombre)}</strong>
-                        <small>${escapeHTML(p.id)}</small>
+                        <!-- Doble clic para editar Nombre -->
+                        <strong class="editable-inline" data-campo="nombre" data-id="${escapeHTML(p.id)}" title="Doble clic para editar nombre">
+                            ${escapeHTML(p.nombre)}
+                        </strong>
+                        <small>${escapeHTML(p.id)} ${p.destacado === "SI" ? "⭐" : ""}</small>
                     </div>
                 </div>
             </td>
             <td>${escapeHTML(p.tipo)}</td>
-            <td>S/ ${Number(p.precio).toFixed(2)}</td>
+            <td>
+                <!-- Doble clic para editar Precio -->
+                <span class="editable-inline" data-campo="precio" data-id="${escapeHTML(p.id)}" title="Doble clic para editar precio">
+                    S/ ${Number(p.precio).toFixed(2)}
+                </span>
+            </td>
             <td>
                 <div class="stock-box">
                     <input type="number" min="0" class="input-stock" data-id="${escapeHTML(p.id)}" value="${p.stock}">
@@ -140,8 +223,8 @@ function renderizarTabla() {
                 </button>
             </td>
             <td class="acciones-tabla">
-                <button type="button" data-accion="editar" data-id="${escapeHTML(p.id)}" title="Editar">✎</button>
-                <button type="button" data-accion="eliminar" data-id="${escapeHTML(p.id)}" title="Eliminar" style="color:red;">🗑</button>
+                <button type="button" data-accion="editar" data-id="${escapeHTML(p.id)}">✎</button>
+                <button type="button" data-accion="eliminar" data-id="${escapeHTML(p.id)}" style="color:red;">🗑</button>
             </td>
         `;
         fragment.appendChild(tr);
@@ -149,9 +232,10 @@ function renderizarTabla() {
 
     tbody.innerHTML = "";
     tbody.appendChild(fragment);
+    actualizarBarraLote();
 }
 
-// Sistema de ordenamiento por columnas
+// Ordenar Tabla
 function ordenarDatos(colIndex, tipo) {
     if (ordenActual.columna === colIndex) {
         ordenActual.ascendente = !ordenActual.ascendente;
@@ -195,16 +279,25 @@ function ordenarDatos(colIndex, tipo) {
     renderizarTabla();
 }
 
+// Aplicar Filtros Combinados
 function aplicarFiltros(resetearOrden = true) {
     const texto = (document.getElementById("buscar-producto")?.value || "").trim().toLowerCase();
     const tipo = document.getElementById("filtro-tipo")?.value || "";
     const estado = document.getElementById("filtro-estado")?.value || "";
+    const stock = document.getElementById("filtro-stock")?.value || "";
+    const destacado = document.getElementById("filtro-destacado-select")?.value || "";
 
     window.productosFiltrados = window.productosAdmin.filter(p => {
         const coincideTexto = p.nombre.toLowerCase().includes(texto) || p.id.toLowerCase().includes(texto);
         const coincideTipo = !tipo || p.tipo === tipo;
         const coincideEstado = !estado || p.estado === estado;
-        return coincideTexto && coincideTipo && coincideEstado;
+        const coincideDestacado = !destacado || p.destacado === destacado;
+        
+        let coincideStock = true;
+        if (stock === "DISPONIBLE") coincideStock = p.stock > 0;
+        if (stock === "AGOTADO") coincideStock = p.stock <= 0;
+
+        return coincideTexto && coincideTipo && coincideEstado && coincideStock && coincideDestacado;
     });
 
     if (!resetearOrden && ordenActual.columna !== null) {
@@ -216,146 +309,107 @@ function aplicarFiltros(resetearOrden = true) {
     }
 }
 
-// Operaciones DB y Archivos
-// Guardar formulario combinando imágenes previas + nuevas
-async function guardarFormulario(e) {
-    e.preventDefault();
-    if (!window.dbSchema) return mostrarToast("Espera a que cargue la base de datos.", "error");
-
-    const id = document.getElementById("f-id").value.trim().toUpperCase();
-    if (!id) return mostrarToast("El ID es obligatorio.", "error");
-
-    const inputPrincipal = document.getElementById("f-imagen-principal");
-    const inputArchivo = document.getElementById("f-imagen-file");
+function limpiarFiltros() {
+    if (document.getElementById("buscar-producto")) document.getElementById("buscar-producto").value = "";
+    if (document.getElementById("filtro-tipo")) document.getElementById("filtro-tipo").value = "";
+    if (document.getElementById("filtro-estado")) document.getElementById("filtro-estado").value = "";
+    if (document.getElementById("filtro-stock")) document.getElementById("filtro-stock").value = "";
+    if (document.getElementById("filtro-destacado-select")) document.getElementById("filtro-destacado-select").value = "";
     
-    // Obtenemos las URLs actuales en el input o estado previo
-    let urlImagenActual = document.getElementById("f-imagen").value.trim();
-    let listaUrls = urlImagenActual ? urlImagenActual.split(",").map(u => u.trim()).filter(Boolean) : [];
+    aplicarFiltros(true);
+}
 
-    try {
-        mostrarToast("Guardando producto e imágenes, por favor espera...", "info");
+// Selección Múltiple y Acciones en Lote
+function actualizarBarraLote() {
+    const barra = document.getElementById("barra-lote");
+    const contador = document.getElementById("contador-seleccionados");
+    const checkTodos = document.getElementById("check-seleccionar-todos");
 
-        const BUCKET_NAME = 'productos';
-        const timestamp = Date.now();
+    if (!barra) return;
 
-        // Nombre final que le corresponde a cada imagen según su posición en pantalla:
-        // posición 0 = "ID.webp" (principal), posición 1 = "ID-2.webp", etc.
-        const nombreFinalDePosicion = (i) => (i === 0 ? `${id}.webp` : `${id}-${i + 1}.webp`);
+    if (seleccionados.size > 0) {
+        barra.hidden = false;
+        if (contador) contador.textContent = seleccionados.size;
+    } else {
+        barra.hidden = true;
+    }
 
-        // FASE 1: mover TODAS las imágenes que ya existían en el Storage a nombres
-        // temporales. Esto evita colisiones cuando se reordena (ej. si la #2 pasa a
-        // ser la principal, no podemos moverla directo a "ID.webp" porque ese nombre
-        // todavía lo tiene otra imagen que aún no se ha movido).
-        const temporales = [];
-        for (let i = 0; i < imagenesSeleccionadas.length; i++) {
-            const img = imagenesSeleccionadas[i];
-            if (!img.blob) {
-                let nombreOrigen = img.nombreTemp || "";
-                if (nombreOrigen.startsWith('http')) {
-                    const partes = nombreOrigen.split('/');
-                    nombreOrigen = partes[partes.length - 1];
-                }
-                nombreOrigen = nombreOrigen.split('?')[0];
-
-                const nombreTemp = `_tmp_${timestamp}_${i}.webp`;
-                if (nombreOrigen && nombreOrigen !== nombreTemp) {
-                    const { error: moveErr } = await supabaseClient.storage.from(BUCKET_NAME).move(nombreOrigen, nombreTemp);
-                    if (moveErr) console.warn("Aviso moviendo a temporal:", nombreOrigen, moveErr.message);
-                }
-                temporales[i] = nombreTemp;
-            }
-        }
-
-        // FASE 2: subir las imágenes nuevas y renombrar las existentes a su nombre
-        // definitivo según la posición final que armaste en el formulario.
-        let listaUrls = [];
-        const nombresFinales = [];
-
-        for (let i = 0; i < imagenesSeleccionadas.length; i++) {
-            const img = imagenesSeleccionadas[i];
-            const nombreDestino = nombreFinalDePosicion(i);
-            nombresFinales.push(nombreDestino);
-
-            if (img.blob) {
-                const { error: upErr } = await supabaseClient.storage
-                    .from(BUCKET_NAME)
-                    .upload(nombreDestino, img.blob, { contentType: 'image/webp', upsert: true });
-                if (upErr) throw upErr;
-            } else {
-                const { error: moveErr } = await supabaseClient.storage.from(BUCKET_NAME).move(temporales[i], nombreDestino);
-                if (moveErr) console.warn("Aviso moviendo a destino final:", temporales[i], moveErr.message);
-            }
-
-            const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(nombreDestino);
-            listaUrls.push(`${urlData.publicUrl}?v=${timestamp}_${i}`);
-        }
-
-        // Limpieza: si antes había más imágenes que ahora (ej. tenías 6 y dejaste 3),
-        // borramos del Storage los archivos "ID-4.webp", "ID-5.webp"... que ya no se usan.
-        try {
-            const { data: archivosBucket } = await supabaseClient.storage.from(BUCKET_NAME).list('', { limit: 100 });
-            const huerfanos = (archivosBucket || [])
-                .map(a => a.name)
-                .filter(nombre => {
-                    const sinExt = nombre.split('.')[0].toUpperCase();
-                    const perteneceAlProducto = sinExt === id || sinExt.startsWith(`${id}-`);
-                    return perteneceAlProducto && !nombresFinales.includes(nombre);
-                });
-            if (huerfanos.length > 0) {
-                await supabaseClient.storage.from(BUCKET_NAME).remove(huerfanos);
-            }
-        } catch (limpiezaErr) {
-            console.warn("No se pudo limpiar imágenes huérfanas:", limpiezaErr.message);
-        }
-
-        const urlImagenFinal = listaUrls.join(",");
-
-        const payload = {};
-    payload[window.dbSchema.id] = id;
-        payload[window.dbSchema.tipo] = document.getElementById("f-tipo").value;
-        payload[window.dbSchema.nombre] = document.getElementById("f-nombre").value.trim();
-        payload[window.dbSchema.precio] = Number(document.getElementById("f-precio").value || 0);
-        payload[window.dbSchema.material] = document.getElementById("f-material").value.trim();
-        payload[window.dbSchema.descripcion] = document.getElementById("f-descripcion").value.trim();
-        payload[window.dbSchema.imagen] = urlImagenFinal;
-        payload[window.dbSchema.estado] = document.getElementById("f-estado").value;
-        payload[window.dbSchema.destacado] = document.getElementById("f-destacado").value;
-        payload[window.dbSchema.orden] = Number(document.getElementById("f-orden").value || 999);
-        payload[window.dbSchema.stock] = Number(document.getElementById("f-stock").value || 0);
-
-        let error;
-        if (editandoId) {
-            const res = await supabaseClient.from('productos').update(payload).eq(window.dbSchema.id, editandoId);
-            error = res.error;
-        } else {
-            const { data: maxResult, error: maxError } = await supabaseClient
-                .from('productos')
-                .select('N°')
-                .order('N°', { ascending: false })
-                .limit(1);
-
-            let maxN = (!maxError && maxResult && maxResult.length > 0) ? Number(maxResult[0]['N°'] || 0) : window.productosAdmin.length;
-            payload["N°"] = maxN + 1;
-
-            const res = await supabaseClient.from('productos').insert([payload]);
-            error = res.error;
-        }
-
-        if (error) throw error;
-
-        notificarCambioCatalogo();
-        mostrarToast(editandoId ? "Producto actualizado correctamente" : "Producto creado correctamente", "exito");
-        
-        if (inputPrincipal) inputPrincipal.value = "";
-        if (inputArchivo) inputArchivo.value = "";
-        
-        cerrarFormulario();
-        await recargarProductos();
-    } catch (err) {
-        mostrarToast("Error: " + err.message, "error");
+    if (checkTodos) {
+        const visibles = window.productosFiltrados.map(p => p.id);
+        checkTodos.checked = visibles.length > 0 && visibles.every(id => seleccionados.has(id));
     }
 }
 
+async function cambiarEstadoMasivo(nuevoEstado) {
+    if (!seleccionados.size || !window.dbSchema) return;
+    const ids = Array.from(seleccionados);
+
+    try {
+        const payload = {};
+        payload[window.dbSchema.estado] = nuevoEstado;
+
+        const { error } = await supabaseClient.from('productos').update(payload).in(window.dbSchema.id, ids);
+        if (error) throw error;
+
+        notificarCambioCatalogo();
+        mostrarToast(`Se actualizaron ${ids.length} productos a ${nuevoEstado}`, "exito");
+        seleccionados.clear();
+        await recargarProductos();
+    } catch (err) {
+        mostrarToast("Error en acción masiva: " + err.message, "error");
+    }
+}
+
+async function eliminarMasivo() {
+    if (!seleccionados.size || !window.dbSchema) return;
+    const ids = Array.from(seleccionados);
+
+    if (!confirm(`¿Estás seguro de eliminar los ${ids.length} productos seleccionados?`)) return;
+
+    try {
+        const { error } = await supabaseClient.from('productos').delete().in(window.dbSchema.id, ids);
+        if (error) throw error;
+
+        notificarCambioCatalogo();
+        mostrarToast(`Se eliminaron ${ids.length} productos`, "exito");
+        seleccionados.clear();
+        await recargarProductos();
+    } catch (err) {
+        mostrarToast("Error al eliminar masivamente: " + err.message, "error");
+    }
+}
+
+// Exportación CSV
+function exportarCSV() {
+    if (!window.productosAdmin.length) return mostrarToast("No hay datos para exportar", "error");
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "ID,Nombre,Tipo,Precio,Stock,Estado,Destacado,Material\n";
+
+    window.productosAdmin.forEach(p => {
+        const fila = [
+            `"${p.id}"`,
+            `"${p.nombre.replace(/"/g, '""')}"`,
+            `"${p.tipo}"`,
+            p.precio,
+            p.stock,
+            `"${p.estado}"`,
+            `"${p.destacado}"`,
+            `"${p.material.replace(/"/g, '""')}"`
+        ].join(",");
+        csvContent += fila + "\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `inventario_oriza_art_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Convertidor WEBP
 function convertirImagenAWebp(file, calidad = 0.85) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -389,55 +443,104 @@ function convertirImagenAWebp(file, calidad = 0.85) {
     });
 }
 
-// Sube la imagen principal y/o secundarias respetando las existentes
-async function subirImagenesSupabase(idProducto, { principal = null, otras = [] } = {}, offsetSecundarias = 2) {
-    const BUCKET_NAME = 'productos';
-    const urlsGuardadas = [];
+// Guardar Formulario
+async function guardarFormulario(e) {
+    e.preventDefault();
+    if (!window.dbSchema) return mostrarToast("Espera a que cargue la base de datos.", "error");
 
-    const subirUnaImagen = async (file, filePath, indiceLog, totalLog) => {
-        console.log(`Convirtiendo y subiendo imagen ${indiceLog} de ${totalLog}:`, filePath);
+    const id = document.getElementById("f-id").value.trim().toUpperCase();
+    if (!id) return mostrarToast("El ID es obligatorio.", "error");
 
-        const blobWebp = await convertirImagenAWebp(file);
-        const { error } = await supabaseClient
-            .storage
-            .from(BUCKET_NAME)
-            .upload(filePath, blobWebp, {
-                cacheControl: '3600',
-                upsert: true,
-                contentType: 'image/webp'
-            });
+    try {
+        mostrarToast("Guardando producto e imágenes...", "info");
 
-        if (error) {
-            console.error(`Error subiendo la imagen ${file.name}:`, error);
-            throw new Error(`Error en imagen ${indiceLog}: ` + error.message);
+        const BUCKET_NAME = 'productos';
+        const timestamp = Date.now();
+        const nombreFinalDePosicion = (i) => (i === 0 ? `${id}.webp` : `${id}-${i + 1}.webp`);
+
+        const temporales = [];
+        for (let i = 0; i < imagenesSeleccionadas.length; i++) {
+            const img = imagenesSeleccionadas[i];
+            if (!img.blob) {
+                let nombreOrigen = img.nombreTemp || "";
+                if (nombreOrigen.startsWith('http')) {
+                    const partes = nombreOrigen.split('/');
+                    nombreOrigen = partes[partes.length - 1];
+                }
+                nombreOrigen = nombreOrigen.split('?')[0];
+
+                const nombreTemp = `_tmp_${timestamp}_${i}.webp`;
+                if (nombreOrigen && nombreOrigen !== nombreTemp) {
+                    await supabaseClient.storage.from(BUCKET_NAME).move(nombreOrigen, nombreTemp);
+                }
+                temporales[i] = nombreTemp;
+            }
         }
 
-        const { data: urlData } = supabaseClient
-            .storage
-            .from(BUCKET_NAME)
-            .getPublicUrl(filePath);
+        let listaUrls = [];
+        const nombresFinales = [];
 
-        return `${urlData.publicUrl}?v=${Date.now()}`;
-    };
+        for (let i = 0; i < imagenesSeleccionadas.length; i++) {
+            const img = imagenesSeleccionadas[i];
+            const nombreDestino = nombreFinalDePosicion(i);
+            nombresFinales.push(nombreDestino);
 
-    const totalLog = (principal ? 1 : 0) + otras.length;
-    let indiceLog = 1;
+            if (img.blob) {
+                const { error: upErr } = await supabaseClient.storage
+                    .from(BUCKET_NAME)
+                    .upload(nombreDestino, img.blob, { contentType: 'image/webp', upsert: true });
+                if (upErr) throw upErr;
+            } else {
+                await supabaseClient.storage.from(BUCKET_NAME).move(temporales[i], nombreDestino);
+            }
 
-    // 1. Imagen principal: solo si se subió un nuevo archivo principal
-    if (principal) {
-        urlsGuardadas.push(await subirUnaImagen(principal, `${idProducto}.webp`, indiceLog, totalLog));
-        indiceLog++;
+            const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(nombreDestino);
+            listaUrls.push(`${urlData.publicUrl}?v=${timestamp}_${i}`);
+        }
+
+        const urlImagenFinal = listaUrls.join(",");
+
+        const payload = {};
+        payload[window.dbSchema.id] = id;
+        payload[window.dbSchema.tipo] = document.getElementById("f-tipo").value;
+        payload[window.dbSchema.nombre] = document.getElementById("f-nombre").value.trim();
+        payload[window.dbSchema.precio] = Number(document.getElementById("f-precio").value || 0);
+        payload[window.dbSchema.material] = document.getElementById("f-material").value.trim();
+        payload[window.dbSchema.descripcion] = document.getElementById("f-descripcion").value.trim();
+        payload[window.dbSchema.imagen] = urlImagenFinal;
+        payload[window.dbSchema.estado] = document.getElementById("f-estado").value;
+        payload[window.dbSchema.destacado] = document.getElementById("f-destacado").value;
+        payload[window.dbSchema.orden] = Number(document.getElementById("f-orden").value || 999);
+        payload[window.dbSchema.stock] = Number(document.getElementById("f-stock").value || 0);
+
+        let error;
+        if (editandoId) {
+            const res = await supabaseClient.from('productos').update(payload).eq(window.dbSchema.id, editandoId);
+            error = res.error;
+        } else {
+            const { data: maxResult } = await supabaseClient
+                .from('productos')
+                .select('N°')
+                .order('N°', { ascending: false })
+                .limit(1);
+
+            let maxN = (maxResult && maxResult.length > 0) ? Number(maxResult[0]['N°'] || 0) : window.productosAdmin.length;
+            payload["N°"] = maxN + 1;
+
+            const res = await supabaseClient.from('productos').insert([payload]);
+            error = res.error;
+        }
+        await registrarAuditoria(editandoId ? "EDITAR_PRODUCTO" : "CREAR_PRODUCTO", id, `Nombre: ${payload[window.dbSchema.nombre]}`);
+        if (error) throw error;
+
+        notificarCambioCatalogo();
+        mostrarToast(editandoId ? "Producto actualizado correctamente" : "Producto creado correctamente", "exito");
+        
+        cerrarFormulario();
+        await recargarProductos();
+    } catch (err) {
+        mostrarToast("Error: " + err.message, "error");
     }
-
-    // 2. Imágenes secundarias: continúan desde el offset adecuado (ej. -2, -3, -4...)
-    for (let i = 0; i < otras.length; i++) {
-        const numSecundaria = offsetSecundarias + i;
-        const filePath = `${idProducto}-${numSecundaria}.webp`;
-        urlsGuardadas.push(await subirUnaImagen(otras[i], filePath, indiceLog, totalLog));
-        indiceLog++;
-    }
-
-    return urlsGuardadas;
 }
 
 async function eliminarProducto(id) {
@@ -447,6 +550,7 @@ async function eliminarProducto(id) {
         if (error) throw error;
         
         notificarCambioCatalogo();
+        await registrarAuditoria("ELIMINAR_PRODUCTO", id, "Producto eliminado manualmente");
         mostrarToast("Producto eliminado", "exito");
         await recargarProductos();
     } catch (err) { mostrarToast("Error al eliminar", "error"); }
@@ -460,9 +564,10 @@ async function actualizarStockRapido(id, nuevoStock) {
         if (error) throw error;
         
         notificarCambioCatalogo();
-        mostrarToast("Stock actualizado correctamente", "exito");
+        mostrarToast("Stock actualizado", "exito");
         const p = window.productosAdmin.find(x => x.id === id);
         if (p) p.stock = Number(nuevoStock);
+        actualizarKPIs();
     } catch (err) { mostrarToast("Error al actualizar stock", "error"); }
 }
 
@@ -484,28 +589,39 @@ async function toggleEstado(id) {
     } catch (err) { mostrarToast("Error al cambiar estado", "error"); }
 }
 
-async function iniciarSesion(usuario, password) {
+async function iniciarSesion(email, password) {
     try {
-        const { data, error } = await supabaseClient.from('usuarios')
-            .select('*').ilike('usuario', usuario.trim()).eq('password', password.trim()).maybeSingle();
+        // Usar la API nativa de Auth de Supabase
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email.trim(),
+            password: password.trim()
+        });
             
-        if (error || !data) {
-            mostrarErrorLogin("Usuario o contraseña incorrectos.");
+        if (error) {
+            mostrarErrorLogin("Credenciales inválidas: " + error.message);
             return false;
         }
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ usuario: data.usuario, id: data.id }));
+
         mostrarPanel();
         await recargarProductos();
         return true;
-    } catch (err) { return false; }
+    } catch (err) { 
+        mostrarErrorLogin("Error al conectar con el servidor.");
+        return false; 
+    }
 }
+
+// Cierre de sesión nativo
+async function cerrarSesion() {
+    await supabaseClient.auth.signOut();
+    location.reload();
+} 
 
 function abrirFormulario(producto = null) {
     editandoId = producto ? producto.id : null;
     const overlay = document.getElementById("form-overlay");
     if (!overlay) return;
 
-    // 1. Rellenar campos de texto básicos
     document.getElementById("form-titulo").textContent = editandoId ? `Editar: ${editandoId}` : "Nuevo producto";
     const inputId = document.getElementById("f-id");
     inputId.value = producto?.id || "";
@@ -522,98 +638,32 @@ function abrirFormulario(producto = null) {
     document.getElementById("f-orden").value = producto?.orden || "";
     document.getElementById("f-stock").value = producto?.stock ?? 0;
 
-    // 2. Limpiar SIEMPRE el array global de imágenes (asegúrate de que esté descomentado)
     imagenesSeleccionadas = [];
 
-    // 3. Leer la cadena de imágenes con '?' para evitar el error cuando 'producto' es null
-    const cadenaImagenes = producto?.VACIO || producto?.imagen || '';
+    const cadenaImagenes = producto?.imagen || '';
 
     if (cadenaImagenes.trim() !== '') {
-        // Separamos por comas si hay varias
         const imagenesExistentes = cadenaImagenes.split(',').map(img => img.trim());
-        
-        // Base de tu storage de Supabase (ajustado según tu HTML)
-        const storageBaseUrl = 'https://ltzfnsrxkkyuupwyykem.supabase.co/storage/v1/object/public/productos';
-
         imagenesExistentes.forEach(nombreImg => {
-            // Si la URL ya empieza con http, la usamos. Si no, le añadimos la ruta base del storage.
             const urlCompleta = nombreImg.startsWith('http') 
                 ? nombreImg 
-                : `${storageBaseUrl}/${nombreImg}`;
+                : `${SUPABASE_STORAGE_URL}/${nombreImg}`;
 
             imagenesSeleccionadas.push({
-                blob: null, // No hay archivo físico nuevo, ya está en el servidor
+                blob: null,
                 urlPreview: urlCompleta,
                 nombreTemp: nombreImg
             });
         });
     }
 
-    // 4. Dibujar la galería en el contenedor `#contenedor-preview-imagenes`
     renderizarPrevisualizacion();
 
-    // 5. Limpiar el nuevo input de archivos múltiples
     const inputImagenes = document.getElementById("inputImagenes");
     if (inputImagenes) inputImagenes.value = "";
 
     actualizarPreview();
     overlay.hidden = false;
-
-    // 6. Además de lo que traiga la base de datos, revisamos si en el Storage
-    // ya existen archivos con este ID (ej. subidos manualmente o de una sesión anterior)
-    // y los agregamos a la galería si no están ya incluidos.
-    sincronizarImagenesConBucket();
-}
-
-// Busca en el bucket 'productos' archivos que empiecen con el ID indicado
-// (ID.webp, ID-2.webp, ID-3.webp...) y los agrega a la galería de edición
-// si todavía no están en imagenesSeleccionadas. No borra ni reemplaza nada existente.
-async function sincronizarImagenesConBucket() {
-    const id = document.getElementById("f-id")?.value.trim().toUpperCase();
-    if (!id || typeof supabaseClient === "undefined") return;
-
-    try {
-        const BUCKET_NAME = 'productos';
-        const { data: archivos, error } = await supabaseClient.storage.from(BUCKET_NAME).list('', { limit: 100, search: id });
-        if (error) throw error;
-
-        const coincidencias = (archivos || []).filter(a => {
-            const sinExt = a.name.split('.')[0].toUpperCase();
-            return sinExt === id || sinExt.startsWith(`${id}-`);
-        });
-
-        if (coincidencias.length === 0) return;
-
-        coincidencias.sort((a, b) => {
-            const aName = a.name.toUpperCase();
-            const bName = b.name.toUpperCase();
-            if (aName === `${id}.WEBP`) return -1;
-            if (bName === `${id}.WEBP`) return 1;
-            return aName.localeCompare(bName, undefined, { numeric: true });
-        });
-
-        let agregadas = 0;
-        coincidencias.forEach(archivo => {
-            const yaExiste = imagenesSeleccionadas.some(img => img.nombreTemp === archivo.name);
-            if (!yaExiste) {
-                const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(archivo.name);
-                imagenesSeleccionadas.push({
-                    blob: null,
-                    urlPreview: `${urlData.publicUrl}?v=${Date.now()}`,
-                    nombreTemp: archivo.name
-                });
-                agregadas++;
-            }
-        });
-
-        if (agregadas > 0) {
-            renderizarPrevisualizacion();
-            actualizarPreview();
-            mostrarToast(`Se encontraron ${agregadas} imagen(es) ya guardadas para "${id}"`, "info");
-        }
-    } catch (err) {
-        console.warn("No se pudo sincronizar con el bucket:", err.message);
-    }
 }
 
 function cerrarFormulario() {
@@ -623,17 +673,13 @@ function cerrarFormulario() {
 }
 
 function actualizarPreview() {
-    const id = document.getElementById("f-id")?.value;
     const nombre = document.getElementById("f-nombre")?.value || "Nombre del producto";
     const precio = Number(document.getElementById("f-precio")?.value || 0).toFixed(2);
     const tipo = document.getElementById("f-tipo")?.value || "PULSERA";
     const material = document.getElementById("f-material")?.value || "Perlas, Hilo de nylon";
-    const descripcion = document.getElementById("f-descripcion")?.value || "Descripción detallada del producto...";
+    const descripcion = document.getElementById("f-descripcion")?.value || "Descripción detallada...";
     const stock = Number(document.getElementById("f-stock")?.value || 0);
     const destacado = document.getElementById("f-destacado")?.value;
-    const img = document.getElementById("f-imagen")?.value;
-    const inputImagenPrincipal = document.getElementById("f-imagen-principal");
-    const inputImagenFile = document.getElementById("f-imagen-file");
 
     if (document.getElementById("preview-nombre")) document.getElementById("preview-nombre").textContent = nombre;
     if (document.getElementById("preview-precio")) document.getElementById("preview-precio").textContent = `S/ ${precio}`;
@@ -657,19 +703,69 @@ function actualizarPreview() {
 
     const prevImg = document.getElementById("preview-img");
     if (prevImg) {
-    // 1. Si hay imágenes en nuestro nuevo sistema, mostramos la Principal (índice 0)
-    if (typeof imagenesSeleccionadas !== 'undefined' && imagenesSeleccionadas.length > 0) {
-        prevImg.src = imagenesSeleccionadas[0].urlPreview;
-    } 
-    // 2. Si no, intentamos mostrar la foto por defecto del ID
-    else if (id && id.trim() !== "") {
-        prevImg.src = `${SUPABASE_STORAGE_URL}/${id.trim().toUpperCase()}.webp`;
-    } 
-    // 3. Fallback en caso de que no haya nada
-    else {
-        prevImg.src = "https://ltzfnsrxkkyuupwyykem.supabase.co/storage/v1/object/public/productos/no-image.webp";
+        if (imagenesSeleccionadas.length > 0) {
+            prevImg.src = imagenesSeleccionadas[0].urlPreview;
+        } else {
+            prevImg.src = `${SUPABASE_STORAGE_URL}/no-image.webp`;
+        }
     }
+}
+
+// Gestión de Miniaturas e Imágenes
+async function manejarSeleccionImagenes(event) {
+    const archivos = Array.from(event.target.files);
+    if (!archivos.length) return;
+
+    for (const archivo of archivos) {
+        const blobWebp = await convertirImagenAWebp(archivo);
+        const urlBlob = URL.createObjectURL(blobWebp);
+        
+        imagenesSeleccionadas.push({
+            blob: blobWebp,
+            urlPreview: urlBlob,
+            nombreTemp: null
+        });
     }
+
+    renderizarPrevisualizacion();
+    actualizarPreview();
+}
+
+function renderizarPrevisualizacion() {
+    const contenedor = document.getElementById('contenedor-preview-imagenes');
+    if (!contenedor) return;
+    contenedor.innerHTML = '';
+
+    imagenesSeleccionadas.forEach((img, index) => {
+        const esPrincipal = index === 0;
+        const item = document.createElement('div');
+        item.className = `img-preview-card ${esPrincipal ? 'es-principal' : ''}`;
+
+        item.innerHTML = `
+            <div class="img-preview-thumb">
+                <img src="${img.urlPreview}" alt="Preview ${index + 1}">
+                <span class="img-preview-badge">${esPrincipal ? '⭐ Principal' : `#${index + 1}`}</span>
+                <div class="img-preview-overlay">
+                    ${!esPrincipal ? `<button type="button" class="img-preview-btn" onclick="moverAPrincipal(${index})">⭐</button>` : ''}
+                    <button type="button" class="img-preview-btn img-preview-btn-danger" onclick="eliminarImagen(${index})">🗑️</button>
+                </div>
+            </div>
+        `;
+        contenedor.appendChild(item);
+    });
+}
+
+function moverAPrincipal(index) {
+    const elemento = imagenesSeleccionadas.splice(index, 1)[0];
+    imagenesSeleccionadas.unshift(elemento);
+    renderizarPrevisualizacion(); 
+    actualizarPreview();
+}
+
+function eliminarImagen(index) {
+    imagenesSeleccionadas.splice(index, 1);
+    renderizarPrevisualizacion();
+    actualizarPreview();
 }
 
 function mostrarToast(mensaje, tipo = "info") {
@@ -681,359 +777,135 @@ function mostrarToast(mensaje, tipo = "info") {
     toast.timer = setTimeout(() => { toast.className = ""; }, 3000);
 }
 
-// Obtiene la lista de archivos que corresponden al ID del producto desde el Storage de Supabase
-// Variable temporal para mantener el orden actual de las URLs en edición
-let urlsGaleriaActuales = [];
+async function registrarAuditoria(accion, productoId, detalles = "") {
+    try {
+        // Obtener la sesión activa
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const user = session?.user;
 
-// Variable global para gestionar la secuencia de fotos en edición
-window.urlsGaleriaActuales = [];
+        const logEntry = {
+            usuario_id: user?.id || null,
+            usuario_email: user?.email || "usuario_anonimo",
+            accion: accion,
+            producto_id: String(productoId),
+            detalles: detalles
+        };
 
-// 1. Cargar imágenes existentes desde Supabase Storage y el input f-imagen
-window.cargarGaleriaBucket = async function(idProducto) {
-    const contenedor = document.getElementById("galeria-bucket-container");
-    const inputImagen = document.getElementById("f-imagen");
-    if (!contenedor) return;
+        const { error } = await supabaseClient
+            .from('audit_logs')
+            .insert([logEntry]);
 
-    if (!idProducto) {
-        contenedor.innerHTML = `<small style="color:#888;">Guarda el producto antes de gestionar imágenes en el bucket.</small>`;
-        return;
+        if (error) {
+            console.error("Error al insertar en audit_logs:", error.message);
+        }
+    } catch (err) {
+        console.warn("Excepción en auditoría:", err.message);
     }
+}
 
-    contenedor.innerHTML = `<small style="color:#888;">Cargando imágenes...</small>`;
+// 1. Función unificada para guardar cualquier cambio en Supabase
+async function guardarCambioInline(idProducto, columnaClave, nuevoValor, callbackExito) {
+    if (typeof supabaseClient === "undefined") return;
+
+    const columnaBD = window.dbSchema?.[columnaClave] || columnaClave.toUpperCase();
+    const columnaIdBD = window.dbSchema?.id || 'ID';
 
     try {
-        const BUCKET_NAME = 'productos';
-        const idLimpio = idProducto.trim().toUpperCase();
-
-        // Obtener URLs previamente guardadas en la base de datos (campo f-imagen)
-        let urlsTexto = inputImagen ? inputImagen.value.trim() : "";
-        window.urlsGaleriaActuales = urlsTexto ? urlsTexto.split(",").map(u => u.trim()).filter(Boolean) : [];
-
-        // Consultar el Bucket para obtener los archivos reales
-        const { data: archivos, error } = await supabaseClient
-            .storage
-            .from(BUCKET_NAME)
-            .list('', { limit: 100 });
+        const { error } = await supabaseClient
+            .from('productos')
+            .update({ [columnaBD]: nuevoValor })
+            .eq(columnaIdBD, idProducto);
 
         if (error) throw error;
 
-        // Filtrar archivos que pertenecen a este ID (ej: ID.webp, ID-2.webp, id.webp, id-3.webp)
-        const archivosProducto = (archivos || []).filter(archivo => {
-            const nombreSinExt = archivo.name.split('.')[0].toUpperCase();
-            return nombreSinExt === idLimpio || nombreSinExt.startsWith(`${idLimpio}-`);
-        });
+        // Registrar auditoría del cambio inline
+        await registrarAuditoria(
+            "UPDATE_INLINE", 
+            idProducto, 
+            `Campo '${columnaBD}' actualizado a '${nuevoValor}'`
+        );
 
-        // Crear mapa con las URLs públicas con token anti-caché
-        let mapaUrlsDisponibles = {};
-        archivosProducto.forEach(archivo => {
-            const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(archivo.name);
-            mapaUrlsDisponibles[archivo.name] = `${urlData.publicUrl}?v=${Date.now()}`;
-        });
+        mostrarToast("Guardado correctamente", "exito");
 
-        // Si la lista de URLs está vacía, la llenamos con las encontradas en el bucket
-        if (window.urlsGaleriaActuales.length === 0) {
-            archivosProducto.sort((a, b) => {
-                const aName = a.name.toUpperCase();
-                const bName = b.name.toUpperCase();
-                if (aName === `${idLimpio}.WEBP`) return -1;
-                if (bName === `${idLimpio}.WEBP`) return 1;
-                return aName.localeCompare(bName, undefined, { numeric: true });
+        const prod = window.productosAdmin.find(p => p.id.toString() === idProducto.toString());
+        if (prod) prod[columnaClave] = nuevoValor;
+
+        actualizarKPIs();
+        if (typeof callbackExito === 'function') callbackExito();
+
+    } catch (err) {
+        mostrarToast("Error al guardar: " + err.message, "error");
+        recargarProductos(paginaActual);
+    }
+}
+
+// 2. Listener global para CAMBIO DE STOCK (Input)
+document.addEventListener('change', async (e) => {
+    if (e.target.classList.contains('input-stock')) {
+        const id = e.target.getAttribute('data-id');
+        const nuevoStock = Number(e.target.value);
+        await guardarCambioInline(id, 'stock', nuevoStock);
+    }
+});
+
+// 3. Listener global para CAMBIO DE ESTADO (Botón Activo / Inactivo)
+document.addEventListener('click', async (e) => {
+    const btnEstado = e.target.closest('[data-accion="toggle-estado"]');
+    if (btnEstado) {
+        const id = btnEstado.getAttribute('data-id');
+        const esActivoActual = btnEstado.classList.contains('activo');
+        const nuevoEstado = esActivoActual ? 'INACTIVO' : 'ACTIVO';
+
+        await guardarCambioInline(id, 'estado', nuevoEstado, () => {
+            renderizarTabla(); // Re-renderiza para actualizar los colores del badge
+        });
+    }
+});
+
+// 4. Listener global para DOBLE CLIC (Nombre y Precio editable)
+document.addEventListener('dblclick', (e) => {
+    const elemento = e.target.closest('.editable-inline');
+    if (!elemento || elemento.querySelector('input')) return; // Evitar abrir si ya hay un input
+
+    const id = elemento.getAttribute('data-id');
+    const campo = elemento.getAttribute('data-campo'); // 'nombre' o 'precio'
+    const valorActual = campo === 'precio' 
+        ? elemento.textContent.replace('S/', '').trim() 
+        : elemento.textContent.trim();
+
+    // Reemplazar texto por un input temporal
+    const input = document.createElement('input');
+    input.type = campo === 'precio' ? 'number' : 'text';
+    input.value = valorActual;
+    input.style.cssText = "width: 100%; padding: 4px; font-size: inherit;";
+
+    elemento.innerHTML = '';
+    elemento.appendChild(input);
+    input.focus();
+
+    // Guardar al presionar ENTER o al perder el foco (BLUR)
+    const guardar = async () => {
+        let nuevoValor = input.value.trim();
+        if (campo === 'precio') nuevoValor = Number(nuevoValor);
+
+        if (nuevoValor !== "" && nuevoValor !== valorActual) {
+            await guardarCambioInline(id, campo, nuevoValor, () => {
+                renderizarTabla();
             });
-
-            window.urlsGaleriaActuales = archivosProducto.map(a => mapaUrlsDisponibles[a.name]);
-            if (inputImagen) inputImagen.value = window.urlsGaleriaActuales.join(",");
+        } else {
+            renderizarTabla(); // Si no cambió nada, re-renderizar para quitar el input
         }
+    };
 
-        if (window.urlsGaleriaActuales.length === 0) {
-            contenedor.innerHTML = `<small style="color:#888;">No hay imágenes registradas para este producto.</small>`;
-            return;
-        }
-
-        renderizarGridGaleria(idLimpio, mapaUrlsDisponibles);
-
-    } catch (err) {
-        console.error("Error al cargar galería:", err);
-        contenedor.innerHTML = `<small style="color:red;">Error al cargar imágenes (${err.message}).</small>`;
-    }
-};
-
-// 2. Dibujar las miniaturas con sus distintivos #1 (Principal) y #2, #3... (Secundarias)
-function renderizarGridGaleria(idProducto, mapaUrlsDisponibles) {
-    const contenedor = document.getElementById("galeria-bucket-container");
-    if (!contenedor) return;
-
-    if (window.urlsGaleriaActuales.length === 0) {
-        contenedor.innerHTML = `<small style="color:#888;">Sin imágenes disponibles.</small>`;
-        return;
-    }
-
-    contenedor.innerHTML = window.urlsGaleriaActuales.map((url, index) => {
-        const nombreArchivoMatch = Object.keys(mapaUrlsDisponibles).find(key => url.includes(key));
-        const nombreArchivo = nombreArchivoMatch || `imagen_${index}.webp`;
-        const esPrincipal = index === 0;
-
-        return `
-            <div class="item-galeria-bucket ${esPrincipal ? 'es-principal' : ''}" style="position:relative; display:inline-block; margin:5px; text-align:center;">
-                <img src="${url}" alt="Foto ${index + 1}" style="width: 75px; height: 75px; object-fit: cover; border-radius: 6px; border: ${esPrincipal ? '2px solid #6F4E37' : '1px solid #ccc'};">
-                <div style="font-size: 10px; font-weight: bold; background: ${esPrincipal ? '#6F4E37' : '#555'}; color: #fff; padding: 2px 0; border-radius: 0 0 6px 6px;">
-                    #${index + 1} ${esPrincipal ? 'Principal' : 'Secundaria'}
-                </div>
-                <div style="position: absolute; top: 2px; right: 2px; display: flex; gap: 2px;">
-                    ${!esPrincipal ? `<button type="button" onclick="window.moverFotoGaleria(${index})" title="Convertir en Principal" style="background:#fff; border:none; cursor:pointer; border-radius:50%; width:20px; height:20px; font-size:10px;">⬆️</button>` : ''}
-                    <button type="button" onclick="window.eliminarFotoBucket('${idProducto}', '${nombreArchivo}')" title="Eliminar" style="background:#fff; color:red; border:none; cursor:pointer; border-radius:50%; width:20px; height:20px; font-size:10px; font-weight:bold;">✕</button>
-                </div>
-            </div>
-        `;
-    }).join("");
-}
-
-// 3. Reordenar: Convierte cualquier imagen seleccionada en la N° 1 (Principal)
-window.moverFotoGaleria = function(index) {
-    if (index <= 0) return;
-
-    // Quitar del índice actual y colocar al inicio (índice 0 = Principal)
-    const fotoSeleccionada = window.urlsGaleriaActuales.splice(index, 1)[0];
-    window.urlsGaleriaActuales.unshift(fotoSeleccionada);
-
-    // Actualizar el valor en el input f-imagen que irá a la Base de Datos
-    const inputImagen = document.getElementById("f-imagen");
-    if (inputImagen) {
-        inputImagen.value = window.urlsGaleriaActuales.join(",");
-    }
-
-    // Volver a renderizar las miniaturas
-    const idProducto = document.getElementById("f-id").value.trim().toUpperCase();
-    let mapaTemp = {};
-    window.urlsGaleriaActuales.forEach(u => {
-        const partes = u.split('/');
-        const archivo = partes[partes.length - 1].split('?')[0];
-        mapaTemp[archivo] = u;
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') guardar();
+        if (e.key === 'Escape') renderizarTabla();
     });
 
-    renderizarGridGaleria(idProducto, mapaTemp);
-    if (typeof actualizarPreview === "function") actualizarPreview();
-    if (typeof mostrarToast === "function") mostrarToast("Imagen establecida como Principal (#1)", "info");
-};
+    input.addEventListener('blur', guardar, { once: true });
+});
 
-// 4. Eliminar foto del storage y reordenar lista
-window.eliminarFotoBucket = async function(idProducto, nombreArchivo) {
-    if (!confirm(`¿Estás seguro de eliminar la imagen "${nombreArchivo}"?`)) return;
-
-    try {
-        const BUCKET_NAME = 'productos';
-
-        // Borrar en Supabase Storage
-        await supabaseClient.storage.from(BUCKET_NAME).remove([nombreArchivo]);
-
-        // Remover de la lista actual en memoria
-        window.urlsGaleriaActuales = window.urlsGaleriaActuales.filter(u => !u.includes(nombreArchivo));
-
-        const inputImagen = document.getElementById("f-imagen");
-        if (inputImagen) {
-            inputImagen.value = window.urlsGaleriaActuales.join(",");
-        }
-
-        if (typeof mostrarToast === "function") mostrarToast("Imagen eliminada", "exito");
-        
-        await window.cargarGaleriaBucket(idProducto);
-        if (typeof actualizarPreview === "function") actualizarPreview();
-
-    } catch (err) {
-        if (typeof mostrarToast === "function") mostrarToast("Error al eliminar: " + err.message, "error");
-    }
-};
-
-// En js/admin.js: Procesar y subir selección múltiple
-async function subirImagenesTemporales(productoId, archivos) {
-  const urlsSubidas = [];
-
-  for (let i = 0; i < archivos.length; i++) {
-    // Tu función existente de conversión a WebP
-    const blobWebp = await convertirImagenAWebp(archivos[i]);
-    
-    // Nombre temporal único
-    const nombreTemp = `${productoId}_temp_${Date.now()}_${i}.webp`;
-
-    // Subida a Supabase Storage
-    const { data, error } = await window.supabaseClient.storage
-      .from('productos') // Nombre de tu bucket
-      .upload(nombreTemp, blobWebp, { contentType: 'image/webp', upsert: true });
-
-    if (!error) {
-      urlsSubidas.push(nombreTemp);
-    }
-  }
-
-  return urlsSubidas; // Retorna la lista de nombres subidos al bucket
-}
-
-// Renderizar miniaturas para reordenar en admin.js
-function renderizarPrevisualizacionImagenes(listaNombresImagenes) {
-  const contenedor = document.getElementById('contenedor-preview-imagenes');
-  contenedor.innerHTML = '';
-
-  listaNombresImagenes.forEach((nombreImg, index) => {
-    const card = document.createElement('div');
-    card.className = 'preview-card';
-    card.dataset.index = index;
-    
-    // Identificador visual de cuál es la principal
-    const esPrincipal = index === 0;
-
-    card.innerHTML = `
-      <img src="${SUPABASE_STORAGE_URL}/${nombreImg}" alt="Preview" />
-      <span class="badge">${esPrincipal ? '⭐ Principal' : `#${index + 1}`}</span>
-      <div class="acciones-preview">
-        ${!esPrincipal ? `<button type="button" onclick="marcarComoPrincipal(${index})">Hacer Principal</button>` : ''}
-        <button type="button" onclick="eliminarDePreview(${index})">🗑️</button>
-      </div>
-    `;
-
-    contenedor.appendChild(card);
-  });
-}
-
-// Renombrar en el Storage y guardar el orden final
-async function aplicarOrdenYRenombrarBucket(productoId, listaNombresOrdenados) {
-  const nombresDefinitivos = [];
-
-  for (let index = 0; index < listaNombresOrdenados.length; index++) {
-    const nombreOrigen = listaNombresOrdenados[index];
-    
-    // Construir el nombre estandarizado según la posición:
-    // Posición 0 -> "ID.webp", Posición 1 -> "ID-2.webp", etc.
-    const nombreDestino = index === 0 
-      ? `${productoId}.webp` 
-      : `${productoId}-${index + 1}.webp`;
-
-    // Renombrar/Mover archivo dentro del bucket en Supabase
-    const { error: moveError } = await window.supabaseClient.storage
-      .from('productos')
-      .move(nombreOrigen, nombreDestino);
-
-    // Guardar el nombre final (agregando cache-buster para forzar refresco)
-    nombresDefinitivos.push(`${nombreDestino}?v=${Date.now()}`);
-  }
-
-  // Actualizar el campo en la tabla de la Base de Datos
-  const cadenaFinal = nombresDefinitivos.join(',');
-  
-  const { error: dbError } = await window.supabaseClient
-    .from('productos')
-    .update({ VACIO: cadenaFinal }) // Tu columna actual de imágenes
-    .eq('codigo', productoId);
-
-  if (!dbError) {
-    alert('¡Imágenes organizadas y guardadas con éxito!');
-  }
-}
-
-// Variable global dentro de admin.js para guardar el orden en memoria
-let imagenesSeleccionadas = [];
-
-// 1. OBTENER Y PREVISUALIZAR IMÁGENES AL SELECCIONAR
-async function manejarSeleccionImagenes(event) {
-  const archivos = Array.from(event.target.files);
-  if (!archivos.length) return;
-
-  // Convertimos a WebP y creamos URLs temporales para la vista previa
-  for (const archivo of archivos) {
-    const blobWebp = await convertirImagenAWebp(archivo);
-    const urlBlob = URL.createObjectURL(blobWebp);
-    
-    imagenesSeleccionadas.push({
-      blob: blobWebp,
-      urlPreview: urlBlob,
-      nombreTemp: null
-    });
-  }
-
-  renderizarPrevisualizacion();
-  actualizarPreview();
-}
-
-// 2. RENDERIZAR VISTA PREVIA Y BOTONES DE ORDEN
-function renderizarPrevisualizacion() {
-  const contenedor = document.getElementById('contenedor-preview-imagenes');
-  if (!contenedor) return;
-  contenedor.innerHTML = '';
-  contenedor.classList.add('galeria-preview-grid');
-
-  imagenesSeleccionadas.forEach((img, index) => {
-    const esPrincipal = index === 0;
-    const item = document.createElement('div');
-    item.className = `img-preview-card ${esPrincipal ? 'es-principal' : ''}`;
-
-    item.innerHTML = `
-      <div class="img-preview-thumb">
-        <img src="${img.urlPreview}" alt="Vista previa ${index + 1}">
-        <span class="img-preview-badge">${esPrincipal ? '⭐ Principal' : `#${index + 1}`}</span>
-        <div class="img-preview-overlay">
-          ${!esPrincipal ? `<button type="button" class="img-preview-btn" onclick="moverAPrincipal(${index})" title="Hacer principal">⭐</button>` : ''}
-          <button type="button" class="img-preview-btn img-preview-btn-danger" onclick="eliminarImagen(${index})" title="Eliminar">🗑️</button>
-        </div>
-      </div>
-    `;
-    contenedor.appendChild(item);
-  });
-}
-
-// 3. CAMBIAR LA IMAGEN PRINCIPAL DE LUGAR
-function moverAPrincipal(index) {
-  const elemento = imagenesSeleccionadas.splice(index, 1)[0];
-  imagenesSeleccionadas.unshift(elemento); // La mueve al inicio (Posición 0)
-  renderizarPrevisualizacion(); 
-  actualizarPreview();
-}
-
-function eliminarImagen(index) {
-  imagenesSeleccionadas.splice(index, 1);
-  renderizarPrevisualizacion();
-  actualizarPreview();
-}
-
-// 4. GUARDAR Y RENOMBRAR EN SUPABASE BUCKET Y DB
-// Reemplaza o llama a esta función dentro del evento 'submit' de tu formulario
-async function guardarImagenesProducto(productoId) {
-  if (!imagenesSeleccionadas.length) return;
-
-  const nombresDefinitivos = [];
-
-  for (let i = 0; i < imagenesSeleccionadas.length; i++) {
-    const imgObj = imagenesSeleccionadas[i];
-    
-    // Asignamos el nombre correcto según la posición
-    // Posición 0 = ID.webp (Principal) | Posición 1 = ID-2.webp | Posición 2 = ID-3.webp
-    const nombreFinal = i === 0 ? `${productoId}.webp` : `${productoId}-${i + 1}.webp`;
-
-    // Subimos o reemplazamos directamente en el Storage de Supabase
-    const { error: storageError } = await window.supabaseClient.storage
-      .from('productos')
-      .upload(nombreFinal, imgObj.blob, { 
-        contentType: 'image/webp', 
-        upsert: true // Sobrescribe la versión anterior si existía
-      });
-
-    if (!storageError) {
-      // Guardamos el nombre con timestamp para romper caché
-      nombresDefinitivos.push(`${nombreFinal}?v=${Date.now()}`);
-    }
-  }
-
-  // Actualizamos el campo VACIO (o imagen) en la tabla 'productos'
-  const cadenaFinal = nombresDefinitivos.join(',');
-  const { error: dbError } = await window.supabaseClient
-    .from('productos')
-    .update({ VACIO: cadenaFinal }) // Cambia 'VACIO' si tu columna se llama distinto
-    .eq('codigo', productoId);
-
-  if (!dbError) {
-    alert('Imágenes guardadas y ordenadas correctamente');
-    imagenesSeleccionadas = []; // Reiniciamos el array
-  }
-}
-
-// Event Listeners unificados
+// Event Listeners principales
 document.addEventListener("DOMContentLoaded", () => {
     if (sessionStorage.getItem(SESSION_KEY)) {
         mostrarPanel();
@@ -1049,8 +921,36 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("btn-nuevo")?.addEventListener("click", () => abrirFormulario(null));
     document.getElementById("form-cerrar")?.addEventListener("click", cerrarFormulario);
     document.getElementById("form-producto")?.addEventListener("submit", guardarFormulario);
+    document.getElementById("btn-exportar")?.addEventListener("click", exportarCSV);
+    document.getElementById("btn-limpiar-filtros")?.addEventListener("click", limpiarFiltros);
 
-    // Delegación de eventos en la tabla
+    // listeners de Lote
+    document.getElementById("btn-lote-activar")?.addEventListener("click", () => cambiarEstadoMasivo("ACTIVO"));
+    document.getElementById("btn-lote-desactivar")?.addEventListener("click", () => cambiarEstadoMasivo("INACTIVO"));
+    document.getElementById("btn-lote-eliminar")?.addEventListener("click", eliminarMasivo);
+
+    // Selección de la tabla
+    document.getElementById("check-seleccionar-todos")?.addEventListener("change", (e) => {
+        const checked = e.target.checked;
+        window.productosFiltrados.forEach(p => {
+            if (checked) seleccionados.add(p.id);
+            else seleccionados.delete(p.id);
+        });
+        renderizarTabla();
+    });
+
+    document.getElementById("tabla-productos")?.addEventListener("change", (e) => {
+        if (e.target.classList.contains("check-producto")) {
+            const id = e.target.dataset.id;
+            if (e.target.checked) seleccionados.add(id);
+            else seleccionados.delete(id);
+            actualizarBarraLote();
+        }
+        if (e.target.classList.contains("input-stock")) {
+            actualizarStockRapido(e.target.dataset.id, e.target.value);
+        }
+    });
+
     document.getElementById("tabla-productos")?.addEventListener("click", (e) => {
         const btn = e.target.closest("button[data-accion]");
         if (!btn) return;
@@ -1062,12 +962,6 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (accion === "toggle-estado") toggleEstado(id);
     });
 
-    document.getElementById("tabla-productos")?.addEventListener("change", (e) => {
-        if (e.target.classList.contains("input-stock")) {
-            actualizarStockRapido(e.target.dataset.id, e.target.value);
-        }
-    });
-
     document.querySelectorAll("th[data-col]").forEach(th => {
         th.style.cursor = "pointer";
         th.addEventListener("click", () => ordenarDatos(parseInt(th.dataset.col), th.dataset.tipo));
@@ -1076,24 +970,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("buscar-producto")?.addEventListener("input", () => aplicarFiltros(true));
     document.getElementById("filtro-tipo")?.addEventListener("change", () => aplicarFiltros(true));
     document.getElementById("filtro-estado")?.addEventListener("change", () => aplicarFiltros(true));
-
-    // Listeners del Formulario (se agregan 1 sola vez en el DOMContentLoaded)
-    const manejadorPreview = (e) => {
-        const prevImg = document.getElementById("preview-img");
-        if (e.target.type === "file" && e.target.files?.[0] && prevImg) {
-            prevImg.src = URL.createObjectURL(e.target.files[0]);
-        }
-        actualizarPreview();
-    };
+    document.getElementById("filtro-stock")?.addEventListener("change", () => aplicarFiltros(true));
+    document.getElementById("filtro-destacado-select")?.addEventListener("change", () => aplicarFiltros(true));
 
     document.querySelectorAll("#form-producto input, #form-producto select, #form-producto textarea").forEach(el => {
-        el.addEventListener("input", manejadorPreview);
-        el.addEventListener("change", manejadorPreview);
+        el.addEventListener("input", actualizarPreview);
+        el.addEventListener("change", actualizarPreview);
     });
-
-    // Al terminar de escribir el ID (ej. creando un producto nuevo), buscamos si ya
-    // existen imágenes subidas al bucket con ese ID y las incorporamos a la galería.
-    document.getElementById("f-id")?.addEventListener("blur", () => {
-        if (!editandoId) sincronizarImagenesConBucket();
-    });
-});
+}); 

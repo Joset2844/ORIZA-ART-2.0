@@ -111,13 +111,18 @@ function renderizarLista() {
   }
 
   const defaultBucket = typeof IMAGEN_DEFAULT_BUCKET !== "undefined" ? IMAGEN_DEFAULT_BUCKET : "";
+  const storageBaseUrl = typeof SUPABASE_STORAGE_URL !== "undefined" 
+    ? SUPABASE_STORAGE_URL 
+    : "https://ltzfnsrxkkyuupwyykem.supabase.co/storage/v1/object/public/productos";
 
   cont.innerHTML = window.productosFiltrados.map(p => {
     const activo = (p.estado || "").toLowerCase() === "activo";
     let foto = defaultBucket;
-    if (p.imagen) {
+    if (p.imagen && p.imagen.trim() !== "") {
       const primera = p.imagen.split(",")[0].trim();
-      foto = primera.startsWith("http") ? primera : `${SUPABASE_STORAGE_URL}/${primera || p.id + ".webp"}`;
+      foto = primera.startsWith("http") ? primera : `${storageBaseUrl}/${primera}`;
+    } else if (p.id) {
+      foto = `${storageBaseUrl}/${p.id}.webp`;
     }
 
     return `
@@ -457,17 +462,73 @@ async function iniciarSesion(usuario, password) {
   try {
     const { data, error } = await supabaseClient.from("usuarios")
       .select("*").ilike("usuario", usuario.trim()).eq("password", password.trim()).maybeSingle();
-    if (error || !data) { mostrarErrorLogin("Usuario o contraseña incorrectos."); return false; }
+    if (error || !data) {
+      console.error("🔎 DEBUG LOGIN — error:", error, "data:", data, "usuario enviado:", usuario.trim());
+      mostrarErrorLogin("Usuario o contraseña incorrectos.");
+      return false;
+    }
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ usuario: data.usuario, id: data.id }));
     mostrarPanel();
     await recargarProductos();
     return true;
-  } catch (err) { return false; }
+  } catch (err) {
+    console.error("🔎 DEBUG LOGIN — excepción atrapada:", err);
+    return false;
+  }
 }
 
 // ------------------------------------------------
 // Formulario tipo "hoja" (sheet) deslizable desde abajo
 // ------------------------------------------------
+// 1. Agregar la función de sincronización con Supabase Storage
+async function sincronizarImagenesConBucket() {
+    const id = document.getElementById("f-id")?.value.trim().toUpperCase();
+    if (!id || typeof supabaseClient === "undefined") return;
+
+    try {
+        const BUCKET_NAME = 'productos';
+        const { data: archivos, error } = await supabaseClient.storage.from(BUCKET_NAME).list('', { limit: 100, search: id });
+        if (error) throw error;
+
+        const coincidencias = (archivos || []).filter(a => {
+            const sinExt = a.name.split('.')[0].toUpperCase();
+            return sinExt === id || sinExt.startsWith(`${id}-`);
+        });
+
+        if (coincidencias.length === 0) return;
+
+        coincidencias.sort((a, b) => {
+            const aName = a.name.toUpperCase();
+            const bName = b.name.toUpperCase();
+            if (aName === `${id}.WEBP`) return -1;
+            if (bName === `${id}.WEBP`) return 1;
+            return aName.localeCompare(bName, undefined, { numeric: true });
+        });
+
+        let agregadas = 0;
+        coincidencias.forEach(archivo => {
+            const yaExiste = imagenesSeleccionadas.some(img => img.nombreTemp === archivo.name);
+            if (!yaExiste) {
+                const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(archivo.name);
+                imagenesSeleccionadas.push({
+                    blob: null,
+                    urlPreview: `${urlData.publicUrl}?v=${Date.now()}`,
+                    nombreTemp: archivo.name
+                });
+                agregadas++;
+            }
+        });
+
+        if (agregadas > 0) {
+            renderizarPrevisualizacion();
+            actualizarPreview();
+        }
+    } catch (err) {
+        console.warn("No se pudo sincronizar con el bucket:", err.message);
+    }
+}
+
+// 2. Actualizar la función abrirFormulario para incluir la sincronización
 function abrirFormulario(producto = null) {
   editandoId = producto ? producto.id : null;
   const overlay = document.getElementById("form-overlay");
@@ -491,7 +552,10 @@ function abrirFormulario(producto = null) {
   imagenesSeleccionadas = [];
   const cadenaImagenes = producto?.imagen || "";
   if (cadenaImagenes.trim() !== "") {
-    const storageBaseUrl = "https://ltzfnsrxkkyuupwyykem.supabase.co/storage/v1/object/public/productos";
+    const storageBaseUrl = typeof SUPABASE_STORAGE_URL !== "undefined" 
+      ? SUPABASE_STORAGE_URL 
+      : "https://ltzfnsrxkkyuupwyykem.supabase.co/storage/v1/object/public/productos";
+      
     cadenaImagenes.split(",").map(s => s.trim()).filter(Boolean).forEach(nombreImg => {
       const urlCompleta = nombreImg.startsWith("http") ? nombreImg : `${storageBaseUrl}/${nombreImg}`;
       imagenesSeleccionadas.push({ blob: null, urlPreview: urlCompleta, nombreTemp: nombreImg });
@@ -507,55 +571,14 @@ function abrirFormulario(producto = null) {
   requestAnimationFrame(() => overlay.classList.add("abierto"));
   document.body.style.overflow = "hidden";
 
-  // Además de lo que traiga la base de datos, revisamos si en el Storage ya
-  // existen archivos con este ID y los agregamos a la galería si faltan.
+  // Sincronización automática con el Bucket para cargar todas las imágenes guardadas
   sincronizarImagenesConBucket();
 }
 
-// Busca en el bucket 'productos' archivos que empiecen con el ID indicado
-// (ID.webp, ID-2.webp, ID-3.webp...) y los agrega a la galería si no están ya.
-async function sincronizarImagenesConBucket() {
-  const id = document.getElementById("f-id")?.value.trim().toUpperCase();
-  if (!id || typeof supabaseClient === "undefined") return;
-
-  try {
-    const BUCKET_NAME = "productos";
-    const { data: archivos, error } = await supabaseClient.storage.from(BUCKET_NAME).list("", { limit: 100, search: id });
-    if (error) throw error;
-
-    const coincidencias = (archivos || []).filter(a => {
-      const sinExt = a.name.split(".")[0].toUpperCase();
-      return sinExt === id || sinExt.startsWith(`${id}-`);
-    });
-    if (coincidencias.length === 0) return;
-
-    coincidencias.sort((a, b) => {
-      const aName = a.name.toUpperCase();
-      const bName = b.name.toUpperCase();
-      if (aName === `${id}.WEBP`) return -1;
-      if (bName === `${id}.WEBP`) return 1;
-      return aName.localeCompare(bName, undefined, { numeric: true });
-    });
-
-    let agregadas = 0;
-    coincidencias.forEach(archivo => {
-      const yaExiste = imagenesSeleccionadas.some(img => img.nombreTemp === archivo.name);
-      if (!yaExiste) {
-        const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(archivo.name);
-        imagenesSeleccionadas.push({ blob: null, urlPreview: `${urlData.publicUrl}?v=${Date.now()}`, nombreTemp: archivo.name });
-        agregadas++;
-      }
-    });
-
-    if (agregadas > 0) {
-      renderizarPrevisualizacion();
-      actualizarPreview();
-      mostrarToast(`Se encontraron ${agregadas} imagen(es) ya guardadas para "${id}"`, "info");
-    }
-  } catch (err) {
-    console.warn("No se pudo sincronizar con el bucket:", err.message);
-  }
-}
+// 3. Añadir listener en el evento 'blur' de #f-id al final de DOMContentLoaded en admin-movil.js
+document.getElementById("f-id")?.addEventListener("blur", () => {
+    if (!editandoId) sincronizarImagenesConBucket();
+});
 
 function cerrarFormulario() {
   const overlay = document.getElementById("form-overlay");
@@ -620,9 +643,5 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("#form-producto input, #form-producto select, #form-producto textarea").forEach(el => {
     el.addEventListener("input", actualizarPreview);
     el.addEventListener("change", actualizarPreview);
-  });
-
-  document.getElementById("f-id")?.addEventListener("blur", () => {
-    if (!editandoId) sincronizarImagenesConBucket();
   });
 });
