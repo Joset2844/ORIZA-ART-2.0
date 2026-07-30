@@ -12,6 +12,29 @@ let editandoId = null;
 let ordenMovil = { prop: "orden", ascendente: true };
 let imagenesSeleccionadas = [];
 
+async function registrarAuditoria(accion, productoId, detalles = "") {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const user = session?.user;
+
+        const logEntry = {
+            usuario_id: user?.id || null,
+            usuario_email: user?.email || "usuario_anonimo",
+            accion: accion,
+            producto_id: String(productoId),
+            detalles: detalles
+        };
+
+        const { error } = await supabaseClient
+            .from('audit_logs')
+            .insert([logEntry]);
+
+        if (error) console.error("Error al insertar auditoría:", error.message);
+    } catch (err) {
+        console.warn("Excepción en auditoría:", err.message);
+    }
+}
+
 // Sanitización para prevenir XSS en renders dinámicos
 function escapeHTML(str = "") {
   return String(str)
@@ -405,6 +428,11 @@ async function guardarFormulario(e) {
     if (error) throw error;
 
     notificarCambioCatalogo();
+    await registrarAuditoria(
+    editandoId ? "UPDATE_PRODUCTO" : "CREATE_PRODUCTO",
+    id,
+    editandoId ? `Producto '${id}' editado desde el móvil` : `Nuevo producto '${id}' creado desde el móvil`
+    );
     mostrarToast(editandoId ? "Producto actualizado correctamente" : "Producto creado correctamente", "exito");
     cerrarFormulario();
     await recargarProductos();
@@ -423,6 +451,7 @@ async function eliminarProducto(id) {
     if (error) throw error;
     notificarCambioCatalogo();
     mostrarToast("Producto eliminado", "exito");
+    await registrarAuditoria("DELETE_PRODUCTO", id, `Producto '${id}' eliminado desde el móvil`);
     await recargarProductos();
   } catch (err) { mostrarToast("Error al eliminar", "error"); }
 }
@@ -440,6 +469,7 @@ async function actualizarStockRapido(id, nuevoStock) {
     const input = document.querySelector(`.input-stock-movil[data-id="${id}"]`);
     if (input) input.value = nuevoStock;
     mostrarToast("Stock actualizado", "exito");
+    await registrarAuditoria("UPDATE_STOCK", id, `Stock cambiado a ${nuevoStock} desde el móvil`);
   } catch (err) { mostrarToast("Error al actualizar stock", "error"); }
 }
 
@@ -454,20 +484,31 @@ async function toggleEstado(id) {
     if (error) throw error;
     notificarCambioCatalogo();
     mostrarToast(`Estado cambiado a ${nuevoEstado}`, "exito");
+    await registrarAuditoria("UPDATE_ESTADO", id, `Estado cambiado a ${nuevoEstado} desde el móvil`);
     await recargarProductos();
   } catch (err) { mostrarToast("Error al cambiar estado", "error"); }
 }
 
 async function iniciarSesion(usuario, password) {
   try {
-    const { data, error } = await supabaseClient.from("usuarios")
-      .select("*").ilike("usuario", usuario.trim()).eq("password", password.trim()).maybeSingle();
-    if (error || !data) { mostrarErrorLogin("Usuario o contraseña incorrectos."); return false; }
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ usuario: data.usuario, id: data.id }));
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: usuario.trim(),
+      password: password.trim()
+    });
+
+    if (error) {
+      mostrarErrorLogin("Credenciales inválidas: " + error.message);
+      return false;
+    }
+
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ usuario: data.user.email, id: data.user.id }));
     mostrarPanel();
     await recargarProductos();
     return true;
-  } catch (err) { return false; }
+  } catch (err) {
+    mostrarErrorLogin("Error al conectar con el servidor.");
+    return false;
+  }
 }
 
 // ------------------------------------------------
@@ -592,7 +633,11 @@ document.addEventListener("DOMContentLoaded", () => {
     iniciarSesion(document.getElementById("login-user").value, document.getElementById("login-password").value);
   });
 
-  document.getElementById("btn-cerrar-sesion")?.addEventListener("click", () => { sessionStorage.clear(); location.reload(); });
+  document.getElementById("btn-cerrar-sesion")?.addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    sessionStorage.clear();
+    location.reload();
+  });
   document.getElementById("btn-nuevo")?.addEventListener("click", () => abrirFormulario(null));
   document.getElementById("form-cerrar")?.addEventListener("click", cerrarFormulario);
   document.getElementById("form-producto")?.addEventListener("submit", guardarFormulario);
