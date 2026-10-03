@@ -6,7 +6,7 @@
   Para forzar una actualización general: sube el número de CACHE_NAME.
 =============================================*/
 
-const CACHE_NAME = 'oriza-art-v3';
+const CACHE_NAME = 'oriza-art-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
