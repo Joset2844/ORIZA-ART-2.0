@@ -25,9 +25,13 @@ async function iniciarProducto() {
     try {
         const productos = await obtenerProductos();
         const parametros = new URLSearchParams(window.location.search);
-        const id = Number(parametros.get("id"));
+        const param = (parametros.get("id") || "").trim();
+        const codigoBuscado = param.toUpperCase();
 
-        const producto = productos.find(p => Number(p.id) === id);
+        // Se busca por CÓDIGO (ID del admin). Si no hay coincidencia, se acepta el número N° (enlaces antiguos).
+        const producto =
+            productos.find(p => p.codigo === codigoBuscado) ||
+            productos.find(p => String(p.id) === param);
 
         if (!producto) {
             document.title = "Producto no encontrado | ORIZA ART";

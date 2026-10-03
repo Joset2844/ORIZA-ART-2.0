@@ -74,7 +74,9 @@ async function recargarProductos(pagina = 1) {
         // Ordenamiento seguro (evitando caracteres especiales en el endpoint de Supabase)
         if (window.dbSchema?.orden && !window.dbSchema.orden.includes('°')) {
             query = query.order(window.dbSchema.orden, { ascending: true });
-        } else if (window.dbSchema?.id && !window.dbSchema.id.includes('°')) {
+        }
+        // Desempate obligatorio: sin esto, filas con el mismo ORDEN (999) saltan entre páginas
+        if (window.dbSchema?.id && !window.dbSchema.id.includes('°')) {
             query = query.order(window.dbSchema.id, { ascending: true });
         }
 
@@ -452,6 +454,19 @@ async function guardarFormulario(e) {
     if (!id) return mostrarToast("El ID es obligatorio.", "error");
 
     try {
+        // Evitar IDs duplicados: se comprueba ANTES de subir imágenes
+        if (!editandoId) {
+            const { data: existe, error: errExiste } = await supabaseClient
+                .from('productos')
+                .select(window.dbSchema.id)
+                .eq(window.dbSchema.id, id)
+                .limit(1);
+            if (errExiste) throw errExiste;
+            if (existe && existe.length > 0) {
+                return mostrarToast(`El ID ${id} ya existe. Usa otro código.`, "error");
+            }
+        }
+
         mostrarToast("Guardando producto e imágenes...", "info");
 
         const BUCKET_NAME = 'productos';
@@ -518,20 +533,15 @@ async function guardarFormulario(e) {
             const res = await supabaseClient.from('productos').update(payload).eq(window.dbSchema.id, editandoId);
             error = res.error;
         } else {
-            const { data: maxResult } = await supabaseClient
-                .from('productos')
-                .select('N°')
-                .order('N°', { ascending: false })
-                .limit(1);
-
-            let maxN = (maxResult && maxResult.length > 0) ? Number(maxResult[0]['N°'] || 0) : window.productosAdmin.length;
-            payload["N°"] = maxN + 1;
-
+            // El campo N° lo genera Supabase (secuencia). No se envía desde el navegador.
             const res = await supabaseClient.from('productos').insert([payload]);
             error = res.error;
         }
+        if (error) {
+            if (error.code === '23505') throw new Error(`El ID ${id} ya existe en la base de datos.`);
+            throw error;
+        }
         await registrarAuditoria(editandoId ? "EDITAR_PRODUCTO" : "CREAR_PRODUCTO", id, `Nombre: ${payload[window.dbSchema.nombre]}`);
-        if (error) throw error;
 
         notificarCambioCatalogo();
         mostrarToast(editandoId ? "Producto actualizado correctamente" : "Producto creado correctamente", "exito");
