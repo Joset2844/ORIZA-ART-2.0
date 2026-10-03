@@ -80,23 +80,23 @@ async function recargarProductos() {
   }
 
   try {
-    const { data, error } = await supabaseClient.from("productos").select("*");
+    const { data, error } = await supabaseClient.from("productos").select("*").order(window.dbSchema?.id || "ID", { ascending: true });
     if (error) { mostrarToast("Error al cargar productos: " + error.message, "error"); return; }
 
-    if (data && data.length > 0 && !window.dbSchema) {
-      const row = data[0];
+    // Esquema fijo (idéntico al admin de escritorio y a api.js)
+    if (!window.dbSchema) {
       window.dbSchema = {
-        id: "codigo" in row ? "codigo" : ("ID" in row ? "ID" : ("id_codigo" in row ? "id_codigo" : "id")),
-        nombre: "NOMBRE" in row ? "NOMBRE" : "nombre",
-        tipo: "TIPO" in row ? "TIPO" : "tipo",
-        precio: "PRECIO" in row ? "PRECIO" : "precio",
-        stock: "STOCK" in row ? "STOCK" : "stock",
-        estado: "ESTADO" in row ? "ESTADO" : "estado",
-        destacado: "DESTACADO" in row ? "DESTACADO" : "destacado",
-        material: "MATERIAL" in row ? "MATERIAL" : "material",
-        descripcion: "DESCRIPCION ESPIRITUAL" in row ? "DESCRIPCION ESPIRITUAL" : "descripcion",
-        imagen: "VACIO" in row ? "VACIO" : "imagen",
-        orden: "ORDEN" in row ? "ORDEN" : "orden"
+        id: "ID",
+        nombre: "NOMBRE",
+        tipo: "TIPO",
+        precio: "PRECIO",
+        stock: "STOCK",
+        estado: "ESTADO",
+        destacado: "DESTACADO",
+        material: "MATERIAL",
+        descripcion: "DESCRIPCION ESPIRITUAL",
+        imagen: "VACIO",
+        orden: "ORDEN"
       };
     }
 
@@ -340,6 +340,19 @@ async function guardarFormulario(e) {
   if (!id) return mostrarToast("El ID es obligatorio.", "error");
 
   try {
+    // Evitar IDs duplicados: se comprueba ANTES de subir imágenes
+    if (!editandoId) {
+      const { data: existe, error: errExiste } = await supabaseClient
+        .from("productos")
+        .select(window.dbSchema.id)
+        .eq(window.dbSchema.id, id)
+        .limit(1);
+      if (errExiste) throw errExiste;
+      if (existe && existe.length > 0) {
+        return mostrarToast(`El ID ${id} ya existe. Usa otro código.`, "error");
+      }
+    }
+
     mostrarToast("Guardando producto e imágenes, por favor espera...", "info");
 
     const BUCKET_NAME = "productos";
@@ -417,15 +430,15 @@ async function guardarFormulario(e) {
       const res = await supabaseClient.from("productos").update(payload).eq(window.dbSchema.id, editandoId);
       error = res.error;
     } else {
-      const { data: maxResult, error: maxError } = await supabaseClient
-        .from("productos").select("N°").order("N°", { ascending: false }).limit(1);
-      let maxN = (!maxError && maxResult && maxResult.length > 0) ? Number(maxResult[0]["N°"] || 0) : window.productosAdmin.length;
-      payload["N°"] = maxN + 1;
+      // El campo N° lo genera Supabase (secuencia). No se envía desde el navegador.
       const res = await supabaseClient.from("productos").insert([payload]);
       error = res.error;
     }
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === "23505") throw new Error(`El ID ${id} ya existe en la base de datos.`);
+      throw error;
+    }
 
     notificarCambioCatalogo();
     await registrarAuditoria(
