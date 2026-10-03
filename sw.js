@@ -1,9 +1,12 @@
 /*=============================================
-  SERVICE WORKER — ORIZA ART 2.0
-  Estrategia mixta: Stale-While-Revalidate & Cache-First
+  SERVICE WORKER — ORIZA ART 2.1
+  - HTML / JS / CSS: Network-First (los cambios se ven al instante; caché solo si no hay red)
+  - Imágenes: Cache-First
+  - Supabase REST: Network-First
+  Para forzar una actualización general: sube el número de CACHE_NAME.
 =============================================*/
 
-const CACHE_NAME = 'oriza-art-v2';
+const CACHE_NAME = 'oriza-art-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -17,84 +20,81 @@ const STATIC_ASSETS = [
   '/js/carrito.js'
 ];
 
-// 1. Instalación y Precaché de recursos críticos
+// 1. Instalación: precarga tolerante (un archivo que no exista ya no rompe la instalación)
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('⚡ [SW] Precargando assets estáticos...');
-      return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        STATIC_ASSETS.map((url) =>
+          cache.add(url).catch((err) => console.warn('[SW] No se pudo precargar:', url, err))
+        )
+      )
+    ).then(() => self.skipWaiting())
   );
 });
 
-// 2. Activación y Limpieza de cachés obsoletas
+// 2. Activación: borra cachés de versiones anteriores
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-// 3. Intercepción Inteligente de Red
+// 3. Intercepción de red
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Ignorar peticiones no GET o de extensiones
   if (req.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
-  // ESTRATEGIA A: Imágenes del Bucket / WebP (Cache-First)
-  if (req.destination === 'image' || url.pathname.endsWith('.webp') || url.hostname.includes('supabase.co/storage')) {
+  const esSupabase = url.hostname.endsWith('supabase.co');
+
+  // A) Imágenes (Cache-First). Las fotos del admin llevan ?v=timestamp, así que al cambiar se descargan de nuevo.
+  if (req.destination === 'image' || url.pathname.endsWith('.webp') || (esSupabase && url.pathname.includes('/storage/'))) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
-        const cachedResponse = await cache.match(req);
-        if (cachedResponse) return cachedResponse;
-
+        const cached = await cache.match(req);
+        if (cached) return cached;
         try {
-          const networkResponse = await fetch(req);
-          if (networkResponse.ok) {
-            cache.put(req, networkResponse.clone());
-          }
-          return networkResponse;
+          const net = await fetch(req);
+          if (net.ok) cache.put(req, net.clone());
+          return net;
         } catch (err) {
-          // Si falla y no está en caché, retorna fallback si aplica
-          return cachedResponse;
+          return Response.error();
         }
       })
     );
     return;
   }
 
-  // ESTRATEGIA B: Peticiones a la API de Supabase REST (Network-First)
-  if (url.hostname.includes('supabase.co') && url.pathname.includes('/rest/v1/')) {
+  // B) API REST de Supabase (Network-First)
+  if (esSupabase && url.pathname.includes('/rest/v1/')) {
     event.respondWith(
       fetch(req)
-        .then((networkResponse) => {
-          if (networkResponse.ok) {
-            const copy = networkResponse.clone();
+        .then((net) => {
+          if (net.ok) {
+            const copy = net.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           }
-          return networkResponse;
+          return net;
         })
-        .catch(() => caches.match(req))
+        .catch(async () => (await caches.match(req)) || Response.error())
     );
     return;
   }
 
-  // ESTRATEGIA C: Assets estáticos (Stale-While-Revalidate)
+  // C) Páginas, JS y CSS (Network-First: siempre lo más nuevo; caché solo sin conexión)
   event.respondWith(
-    caches.match(req).then((cachedResponse) => {
-      const fetchPromise = fetch(req).then((networkResponse) => {
-        if (networkResponse.ok) {
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, networkResponse));
+    fetch(req)
+      .then((net) => {
+        if (net.ok && url.origin === self.location.origin) {
+          const copy = net.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
         }
-        return networkResponse;
-      }).catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
+        return net;
+      })
+      .catch(async () => (await caches.match(req)) || Response.error())
   );
 });
